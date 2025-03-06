@@ -1,65 +1,83 @@
-import React from 'react';
-import { Layout, Button, Typography, Tabs } from 'antd';
-import musicLogo from './assets/musicLogo.svg';
+import React, { useState } from 'react';
+import { Layout, Menu, Button, Typography, Upload, message } from 'antd';
+import { PlayCircleOutlined, UploadOutlined, DownloadOutlined, EditOutlined } from '@ant-design/icons';
+import MelodyGenerator from './MelodyGenerator';
+import './App.css';
 
-const { Header, Content, Footer } = Layout;
+const { Header, Content, Footer, Sider } = Layout;
 const { Title } = Typography;
 
-const App = () => (
-  <Layout style={{ minHeight: '100vh', minWidth: '100vw' }}>
-    <Header
-      style={{
-        background: '#1890ff',
-        color: 'black',
-        display: 'flex', // Flexbox для вирівнювання
-        justifyContent: 'center', // Вирівнюємо по горизонталі
-        alignItems: 'center', // Вирівнюємо по вертикалі
-        height: '64px', // Встановлюємо висоту header
-      }}
-    >
-      <Title level={3} style={{ color: 'white', margin: 0 }}>
-        Музичний Генератор
-      </Title>
-      
-    </Header>
-    <Content
-      style={{
-        padding: '50px',
-        background: '#f0f2f5',
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <Tabs
-        type="card"
-        items={Array.from({
-          length: 3,
-        }).map((_, i) => {
-          const id = String(i + 1);
-          return {
-            label: `Tab ${id}`,
-            key: id,
-            children: `Content of Tab Pane ${id}`,
-          };
-        })}
-      />
-      <div>
-        <a target="_blank" rel="noopener noreferrer">
-          <img
-            src={musicLogo}
-            className="logo react"
-            alt="Music logo"
-            style={{ width: '150px', height: 'auto', marginBottom: '20px' }}
-          />
-        </a>
-      </div>
-      <Button type="primary">Згенерувати мелодію</Button>
-    </Content>
-    <Footer style={{ textAlign: 'center' }}>© 2025 Music Generator</Footer>
-  </Layout>
-);
+const App = () => {
+  const [activeKey, setActiveKey] = useState("1");
+
+  // Обробник для завантаження файлів
+  const handleUpload = (file) => {
+    message.success("MIDI file uploaded successfully!");
+    return false;  // Призупинити автоматичне завантаження
+  };
+
+  const renderContent = () => {
+    switch (activeKey) {
+      case "1":
+        return <MelodyGenerator />;
+      case "2":
+        return <div>Harmonize Melody component</div>;
+      case "3":
+        return (
+          <Upload 
+            customRequest={handleUpload} 
+            showUploadList={false}
+            accept=".mid, .midi"
+          >
+            <Button icon={<UploadOutlined />}>Click to Upload MIDI</Button>
+          </Upload>
+        );
+      case "4":
+        return <Button icon={<DownloadOutlined />}>Download MIDI File</Button>;
+      default:
+        return <div>Select a menu item</div>;
+    }
+  };
+
+  return (
+    <Layout style={{ minHeight: '100vh', minWidth: '100vw' }}>
+      <Sider collapsible>
+        <div className="logo" style={{ padding: '20px', textAlign: 'center', color: '#fff' }}>
+          🎵 MusicMelodyAI
+        </div>
+        <Menu theme="dark" defaultSelectedKeys={['1']} mode="inline" onClick={({ key }) => setActiveKey(key)}>
+          <Menu.Item key="1" icon={<PlayCircleOutlined />}>
+            Generate Melody
+          </Menu.Item>
+          <Menu.Item key="2" icon={<EditOutlined />}>
+            Harmonize Melody
+          </Menu.Item>
+          <Menu.Item key="3" icon={<UploadOutlined />}>
+            Upload MIDI
+          </Menu.Item>
+          <Menu.Item key="4" icon={<DownloadOutlined />}>
+            Download MIDI
+          </Menu.Item>
+        </Menu>
+      </Sider>
+
+      <Layout>
+        <Header style={{ background: '#001529', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+          <Title level={3} style={{ color: '#fff', textAlign: 'center', display: 'contents' }}>
+            AI-Powered Music Generator
+          </Title>
+        </Header>
+
+        <Content style={{ margin: '20px', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+          {renderContent()}
+        </Content>
+
+        <Footer style={{ textAlign: 'center' }}>
+          © 2025 MusicMelodyAI — Your AI Melody Companion
+        </Footer>
+      </Layout>
+    </Layout>
+  );
+};
 
 export default App;
