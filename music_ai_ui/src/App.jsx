@@ -10,10 +10,9 @@ const { Title } = Typography;
 const App = () => {
   const [activeKey, setActiveKey] = useState("1");
 
-  // Обробник для завантаження файлів
   const handleUpload = (file) => {
     message.success("MIDI file uploaded successfully!");
-    return false;  // Призупинити автоматичне завантаження
+    return false; 
   };
 
   const renderContent = () => {
@@ -43,7 +42,7 @@ const App = () => {
     <Layout style={{ minHeight: '100vh', minWidth: '100vw' }}>
       <Sider collapsible>
         <div className="logo" style={{ padding: '20px', textAlign: 'center', color: '#fff' }}>
-          🎵 MusicMelodyAI
+          🎵MusicMelodyAI
         </div>
         <Menu theme="dark" defaultSelectedKeys={['1']} mode="inline" onClick={({ key }) => setActiveKey(key)}>
           <Menu.Item key="1" icon={<PlayCircleOutlined />}>
@@ -68,7 +67,7 @@ const App = () => {
           </Title>
         </Header>
 
-        <Content style={{ margin: '20px', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+        <Content style={{ margin: '40px 20px 20px 20px', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
           {renderContent()}
         </Content>
 
