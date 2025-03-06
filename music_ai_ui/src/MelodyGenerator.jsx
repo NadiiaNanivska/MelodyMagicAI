@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useReducer, useRef } from 'react';
 import { Layout, Button, Select, InputNumber, Typography, message } from 'antd';
-import * as Tone from 'tone';
 import VirtualPiano from './VirtualPiano';
+import MidiPlayer from './MidiPlayer';
 
 const { Content } = Layout;
 const { Title } = Typography;
@@ -63,9 +63,23 @@ const MelodyGenerator = () => {
         }
     }, [startingNotesRef.current, length]);
 
-    const generateMelody = () => {
+    const generateMelody = async () => {
         console.log('Starting notes:', startingNotesRef.current);
-        success('Melody generated successfully! 🎵');
+        try {
+            // Send request to generate melody
+            success('Melody generated and downloaded successfully! 🎵');
+        } catch (error) {
+            warning('Failed to download the MIDI file.');
+        }
+    };
+
+    const playMelody = async () => {
+        try {
+            // Send request to load the MIDI file and render MidiPlayer with correct file url
+            success('Playing melody! 🎶');
+        } catch (error) {
+            warning(error.message);
+        }
     };
 
     const randomMelody = () => {
@@ -97,15 +111,16 @@ const MelodyGenerator = () => {
                         <Button type="primary" onClick={generateMelody} style={{ marginRight: 10 }}>
                             Generate Melody
                         </Button>
-                        <Button onClick={randomMelody}>
+                        <Button onClick={randomMelody} style={{ marginRight: 10 }}>
                             Random Melody
                         </Button>
-                        {/* <Button type="dashed" onClick={handleExport}>
-                        Export to MIDI
-                    </Button> */}
+                        <Button type="dashed" onClick={playMelody}>
+                            Play Melody
+                        </Button>
                     </div>
                     <div style={{ height: 'fit-content' }}>
                         <VirtualPiano onNoteSelect={handleNoteSelect} parentWidth={width} />
+                        <MidiPlayer />
                     </div>
                     <div style={{ height: '20px' }}>
                         <h3>Starting Notes:</h3>
