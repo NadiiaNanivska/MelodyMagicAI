@@ -8,8 +8,8 @@ const VirtualPiano =  React.memo(({ onNoteSelect, parentWidth }) => {
   const audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const soundfontHostname = 'https://d1pzp51pvbm36p.cloudfront.net';
 
-  const firstNote = MidiNumbers.fromNote('c0');
-  const lastNote = MidiNumbers.fromNote('g9');
+  const firstNote = MidiNumbers.fromNote('a0');
+  const lastNote = MidiNumbers.fromNote('c8');
 
   const keyboardShortcuts = KeyboardShortcuts.create({
     firstNote: firstNote,
