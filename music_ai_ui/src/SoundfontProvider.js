@@ -37,8 +37,6 @@ const SoundfontProvider = ({
       const audioNode = instrument.play(midiNumber);
       const startTime = Date.now();
 
-      onNoteSelect(midiNumber);
-
       setActiveAudioNodes((prevNodes) => ({
         ...prevNodes,
         [midiNumber]: audioNode,
@@ -61,6 +59,12 @@ const SoundfontProvider = ({
       const endTime = Date.now();
       const duration = endTime - noteDurations[midiNumber].startTime;
       console.log(`Note ${midiNumber} duration: ${duration}ms`);
+
+      onNoteSelect({
+        pitch: midiNumber,
+        duration: duration / 1000,
+        velocity: 100,
+      });
 
       setActiveAudioNodes((prevNodes) => ({
         ...prevNodes,

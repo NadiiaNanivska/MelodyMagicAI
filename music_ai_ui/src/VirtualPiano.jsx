@@ -4,7 +4,6 @@ import 'react-piano/dist/styles.css';
 import SoundfontProvider from './SoundfontProvider';
 
 const VirtualPiano =  React.memo(({ onNoteSelect, parentWidth }) => {
-  const [activeNotes, setActiveNotes] = useState([]);
   const audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const soundfontHostname = 'https://d1pzp51pvbm36p.cloudfront.net';
 
@@ -30,6 +29,7 @@ const VirtualPiano =  React.memo(({ onNoteSelect, parentWidth }) => {
           playNote={playNote}
           stopNote={stopNote}
           disabled={isLoading}
+          keyboardShortcuts={keyboardShortcuts}
         />
       )}
     />

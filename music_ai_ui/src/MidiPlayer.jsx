@@ -1,17 +1,17 @@
 import React from 'react';
 import 'html-midi-player';
+
 const MidiPlayer = () => {
     return (
-        <section id="section1">
-            {/* <midi-visualizer 
+        <section style={{margin: '35px 0 0 0'}} id="section1">
+            <midi-visualizer 
                 type="staff" 
-                src="http://localhost:8000/output.mid">
-            </midi-visualizer> */}
+                src="https://cdn.jsdelivr.net/gh/cifkao/html-midi-player@2b12128/twinkle_twinkle.mid">
+            </midi-visualizer>
 
             <midi-player 
-                src="http://localhost:8000/output.mid" 
-                sound-font >
-                // visualizer="#section1 midi-visualizer"
+                src="https://www.mfiles.co.uk/downloads/fur-elise.mid" 
+                sound-font>
             </midi-player>
         </section>
     );

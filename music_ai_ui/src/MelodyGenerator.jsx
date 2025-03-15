@@ -1,39 +1,24 @@
-import React, { useState, useCallback, useEffect, useReducer, useRef } from 'react';
-import { Layout, Button, Select, InputNumber, Typography, message } from 'antd';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Layout, Button, Select, InputNumber, Typography, Tabs, message } from 'antd';
 import VirtualPiano from './VirtualPiano';
 import MidiPlayer from './MidiPlayer';
 
 const { Content } = Layout;
-const { Title } = Typography;
 const { Option } = Select;
+const { TabPane } = Tabs;
 
 const midiToNote = (midiNumber) => {
-    const notes = [
-        'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'
-    ];
+    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
     const octave = Math.floor(midiNumber / 12) - 1;
-    const noteName = notes[midiNumber % 12];
-    return `${noteName}${octave}`;
+    return `${notes[midiNumber % 12]}${octave}`;
 };
 
-const MelodyGenerator = () => {
+const MelodyGenerator = ({uploadedMidiRef}) => {
     const [messageApi, contextHolder] = message.useMessage();
-    const warning = (content) => {
-        messageApi.open({
-            key,
-            type: 'warning',
-            content: content,
-        });
-    };
-    const success = (content) => {
-        messageApi.open({
-            key,
-            type: 'success',
-            content: content,
-        });
-    };
-
     const key = 'updatable';
+    const warning = (content) => messageApi.open({ key, type: 'warning', content });
+    const success = (content) => messageApi.open({ key, type: 'success', content });
+
     const [style, setStyle] = useState('classical');
     const [tempo, setTempo] = useState(120);
     const [length, setLength] = useState(30);
@@ -55,27 +40,39 @@ const MelodyGenerator = () => {
 
     const handleNoteSelect = useCallback((note) => {
         if (startingNotesRef.current.length < length / 5) {
-            note = midiToNote(note);
-            startingNotesRef.current.push(note);
-            setStartingNotes((prev) => [...prev, note]);
+            const newNote = {
+                pitch: note.pitch,  
+                step: startingNotesRef.current.length === 0 ? 0 : 1,
+                duration: note.duration,  
+                velocity: note.velocity, 
+            };
+            startingNotesRef.current.push(newNote);
+            setStartingNotes((prev) => [...prev, midiToNote(newNote.pitch)]);
         } else {
             warning(`You can only select up to ${length / 5} notes.`);
         }
     }, [startingNotesRef.current, length]);
 
     const generateMelody = async () => {
-        console.log('Starting notes:', startingNotesRef.current);
         try {
-            // Send request to generate melody
-            success('Melody generated and downloaded successfully! 🎵');
+            console.log('LSTM generating melody:', startingNotesRef.current);
+            success('LSTM Melody generated successfully! 🎵');
         } catch (error) {
-            warning('Failed to download the MIDI file.');
+            warning('Failed to generate LSTM melody.');
+        }
+    };
+
+    const generateVariations = async () => {
+        try {
+            console.log('VAE generating variations for:', midiNotes);
+            success('VAE variations generated! 🎼');
+        } catch (error) {
+            warning('Failed to generate VAE variations.');
         }
     };
 
     const playMelody = async () => {
         try {
-            // Send request to load the MIDI file and render MidiPlayer with correct file url
             success('Playing melody! 🎶');
         } catch (error) {
             warning(error.message);
@@ -93,39 +90,58 @@ const MelodyGenerator = () => {
             {contextHolder}
             <Layout style={{ minHeight: '100%', minWidth: '100%' }} ref={div}>
                 <Content style={{ textAlign: 'center' }}>
-                    <Title level={2}>AI Melody Generator</Title>
+                    <Tabs defaultActiveKey="lstm" centered>
+                        {/* Вкладка для LSTM */}
+                        <TabPane tab="LSTM Generator" key="lstm">
+                            <div style={{ margin: '20px 0' }}>
+                                <InputNumber min={60} max={200} value={tempo} onChange={setTempo} style={{ marginRight: 20 }} /> BPM
+                                <InputNumber min={4} max={64} value={length} onChange={setLength} style={{ marginLeft: 20 }} /> Notes
+                            </div>
 
-                    <div style={{ margin: '20px 0' }}>
-                        <Select value={style} onChange={setStyle} style={{ width: 200, marginRight: 20 }}>
-                            <Option value="classical">Classical</Option>
-                            <Option value="jazz">Jazz</Option>
-                            <Option value="pop">Pop</Option>
-                            <Option value="rock">Rock</Option>
-                        </Select>
-
-                        <InputNumber min={60} max={200} value={tempo} onChange={setTempo} style={{ marginRight: 20 }} /> BPM
-                        <InputNumber min={4} max={64} value={length} onChange={setLength} style={{ marginLeft: 20 }} /> Notes
-                    </div>
-
-                    <div style={{ padding: '20px' }}>
-                        <Button type="primary" onClick={generateMelody} style={{ marginRight: 10 }}>
-                            Generate Melody
-                        </Button>
-                        <Button onClick={randomMelody} style={{ marginRight: 10 }}>
-                            Random Melody
-                        </Button>
-                        <Button type="dashed" onClick={playMelody}>
-                            Play Melody
-                        </Button>
-                    </div>
+                            <div style={{ padding: '20px' }}>
+                                <Button type="primary" onClick={generateMelody} style={{ marginRight: 10 }}>
+                                    Generate LSTM Melody
+                                </Button>
+                                <Button onClick={randomMelody} style={{ marginRight: 10 }}>
+                                    Random Melody
+                                </Button>
+                                <Button type="dashed" onClick={playMelody}>
+                                    Play Melody
+                                </Button>
+                            </div>
                     <div style={{ height: 'fit-content' }}>
-                        <VirtualPiano onNoteSelect={handleNoteSelect} parentWidth={width} />
-                        <MidiPlayer />
+                            <VirtualPiano onNoteSelect={handleNoteSelect} parentWidth={width} />
+                            <MidiPlayer />
                     </div>
-                    <div style={{ height: '20px' }}>
-                        <h3>Starting Notes:</h3>
-                        <div><p>{startingNotes.join(', ')}</p></div>
-                    </div>
+                            <div style={{ height: '20px' }}>
+                                <h3>Starting Notes:</h3>
+                                <p>{startingNotes.join(', ')}</p>
+                            </div>
+                        </TabPane>
+
+                        {/* Вкладка для VAE */}
+                        <TabPane tab="VAE Variations" key="vae">
+                            <div style={{ margin: '20px 0' }}>
+                                <Select value={style} onChange={setStyle} style={{ width: 200, marginRight: 20 }}>
+                                    <Option value="classical">Classical</Option>
+                                    <Option value="jazz">Jazz</Option>
+                                    <Option value="pop">Pop</Option>
+                                    <Option value="rock">Rock</Option>
+                                </Select>
+                            </div>
+
+                            <div style={{ padding: '20px' }}>
+                                <Button type="primary" onClick={generateVariations} style={{ marginRight: 10 }}>
+                                    Generate Variations (VAE)
+                                </Button>
+                                <Button type="dashed" onClick={playMelody}>
+                                    Play Variation
+                                </Button>
+                            </div>
+
+                            <MidiPlayer />
+                        </TabPane>
+                    </Tabs>
                 </Content>
             </Layout>
         </>

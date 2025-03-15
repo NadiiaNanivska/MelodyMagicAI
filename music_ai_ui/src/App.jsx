@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Layout, Menu, Button, Typography, Upload, message } from 'antd';
 import { PlayCircleOutlined, UploadOutlined, DownloadOutlined, EditOutlined } from '@ant-design/icons';
 import MelodyGenerator from './MelodyGenerator';
+import HarmonizeMelody from './HarmonizeMelody';
 import './App.css';
 
 const { Header, Content, Footer, Sider } = Layout;
@@ -9,30 +10,43 @@ const { Title } = Typography;
 
 const App = () => {
   const [activeKey, setActiveKey] = useState("1");
+  const uploadedMidiRef = useRef(null); // 🔥 Використовуємо useRef замість useState
 
-  const handleUpload = (file) => {
-    message.success("MIDI file uploaded successfully!");
-    return false; 
+  const handleUpload = (info) => {
+    const file = info.file;
+    if (!file.name.endsWith(".mid") && !file.name.endsWith(".midi")) {
+      message.error("Please upload a valid MIDI file.");
+      return false;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      uploadedMidiRef.current = e.target.result;  // 🔥 Зберігаємо MIDI у useRef
+      message.success("MIDI file uploaded successfully!");
+    };
+    reader.readAsArrayBuffer(file);
+
+    return false;
   };
 
   const renderContent = () => {
     switch (activeKey) {
       case "1":
-        return <MelodyGenerator />;
+        return <MelodyGenerator uploadedMidiRef={uploadedMidiRef} />;
       case "2":
-        return <div>Harmonize Melody component</div>;
+        return <HarmonizeMelody uploadedMidiRef={uploadedMidiRef} />;
       case "3":
         return (
           <Upload 
             customRequest={handleUpload} 
             showUploadList={false}
-            accept=".mid, .midi"
+            accept=".mid, .midi, .wav"
           >
-            <Button icon={<UploadOutlined />}>Click to Upload MIDI</Button>
+            <Button icon={<UploadOutlined />}>Click to Upload Audio</Button>
           </Upload>
         );
       case "4":
-        return <Button icon={<DownloadOutlined />}>Download MIDI File</Button>;
+        return <Button icon={<DownloadOutlined />}>Download Audio File</Button>;
       default:
         return <div>Select a menu item</div>;
     }
@@ -52,10 +66,10 @@ const App = () => {
             Harmonize Melody
           </Menu.Item>
           <Menu.Item key="3" icon={<UploadOutlined />}>
-            Upload MIDI
+            Upload Audio file
           </Menu.Item>
           <Menu.Item key="4" icon={<DownloadOutlined />}>
-            Download MIDI
+            Download Audio file
           </Menu.Item>
         </Menu>
       </Sider>
