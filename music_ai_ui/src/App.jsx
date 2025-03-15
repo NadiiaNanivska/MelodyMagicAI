@@ -10,7 +10,7 @@ const { Title } = Typography;
 
 const App = () => {
   const [activeKey, setActiveKey] = useState("1");
-  const uploadedMidiRef = useRef(null); // 🔥 Використовуємо useRef замість useState
+  const uploadedMidiRef = useRef(null);
 
   const handleUpload = (info) => {
     const file = info.file;
@@ -21,7 +21,7 @@ const App = () => {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      uploadedMidiRef.current = e.target.result;  // 🔥 Зберігаємо MIDI у useRef
+      uploadedMidiRef.current = e.target.result;
       message.success("MIDI file uploaded successfully!");
     };
     reader.readAsArrayBuffer(file);
