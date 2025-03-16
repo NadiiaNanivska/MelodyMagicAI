@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Layout, Menu, Button, Typography, Upload, message } from 'antd';
+import { Layout, Menu, Button, Typography, Upload, message, Modal } from 'antd';
 import { PlayCircleOutlined, UploadOutlined, DownloadOutlined, EditOutlined } from '@ant-design/icons';
 import MelodyGenerator from './MelodyGenerator';
 import HarmonizeMelody from './HarmonizeMelody';
@@ -10,6 +10,8 @@ const { Title } = Typography;
 
 const App = () => {
   const [activeKey, setActiveKey] = useState("1");
+  const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
+  const currentPageRef = useRef(null);
   const uploadedMidiRef = useRef(null);
 
   const handleUpload = (info) => {
@@ -29,26 +31,28 @@ const App = () => {
     return false;
   };
 
+  const showUploadModal = () => {
+    setIsUploadModalVisible(true);
+  };
+
+  const handleUploadOk = () => {
+    setIsUploadModalVisible(false);
+  };
+
+  const handleUploadCancel = () => {
+    setIsUploadModalVisible(false);
+  };
+
   const renderContent = () => {
     switch (activeKey) {
       case "1":
+        currentPageRef.current = <MelodyGenerator uploadedMidiRef={uploadedMidiRef} />;
         return <MelodyGenerator uploadedMidiRef={uploadedMidiRef} />;
       case "2":
+        currentPageRef.current = <HarmonizeMelody uploadedMidiRef={uploadedMidiRef} />;
         return <HarmonizeMelody uploadedMidiRef={uploadedMidiRef} />;
-      case "3":
-        return (
-          <Upload 
-            customRequest={handleUpload} 
-            showUploadList={false}
-            accept=".mid, .midi, .wav"
-          >
-            <Button icon={<UploadOutlined />}>Click to Upload Audio</Button>
-          </Upload>
-        );
-      case "4":
-        return <Button icon={<DownloadOutlined />}>Download Audio File</Button>;
       default:
-        return <div>Select a menu item</div>;
+        return currentPageRef.current;
     }
   };
 
@@ -65,11 +69,8 @@ const App = () => {
           <Menu.Item key="2" icon={<EditOutlined />}>
             Harmonize Melody
           </Menu.Item>
-          <Menu.Item key="3" icon={<UploadOutlined />}>
+          <Menu.Item key="3" icon={<UploadOutlined />} onClick={showUploadModal}>
             Upload Audio file
-          </Menu.Item>
-          <Menu.Item key="4" icon={<DownloadOutlined />}>
-            Download Audio file
           </Menu.Item>
         </Menu>
       </Sider>
@@ -85,10 +86,16 @@ const App = () => {
           {renderContent()}
         </Content>
 
-        <Footer style={{ textAlign: 'center' }}>
+        {/* <Footer style={{ textAlign: 'center' }}>
           © 2025 MusicMelodyAI — Your AI Melody Companion
-        </Footer>
+        </Footer> */}
       </Layout>
+
+      <Modal title="Upload Audio File" visible={isUploadModalVisible} onOk={handleUploadOk} onCancel={handleUploadCancel}>
+        <Upload customRequest={handleUpload} showUploadList={true} accept=".mid, .midi, .wav">
+          <Button icon={<UploadOutlined />}>Click to Upload Audio</Button>
+        </Upload>
+      </Modal>
     </Layout>
   );
 };
