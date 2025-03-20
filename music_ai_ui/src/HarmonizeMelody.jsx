@@ -26,6 +26,8 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
             return;
         }
 
+        console.log("Harmonizing melody...");
+
         const formData = new FormData();
         formData.append(
             "file",
@@ -47,7 +49,9 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
         }
 
         const harmonizedMidi = await response.blob();
+        console.log("Harmonized MIDI:", harmonizedMidi);
         const url = URL.createObjectURL(harmonizedMidi);
+        console.log("Harmonized MIDI URL:", url);
         setHarmonizedMidiUrl(url);
         messageApi.destroy();
     };
@@ -77,7 +81,7 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
                                 Download Harmonized MIDI
                             </Button>
                         </a>
-                        <MidiPlayer fileUrl={harmonizedMidiUrl} />
+                        <MidiPlayer fileUrl={harmonizedMidiUrl} showMidiPlayer={true} />
                     </div>
                 )}
             </div>

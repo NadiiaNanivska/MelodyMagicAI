@@ -82,7 +82,7 @@ const App = () => {
           </Title>
         </Header>
 
-        <Content style={{ margin: '40px 20px 20px 20px', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
+        <Content style={{ margin: '20px 20px 20px 20px', background: '#fff', display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
           {renderContent()}
         </Content>
 
