@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Select, message, Upload, Row, Col, List } from 'antd';
-import MidiPlayer from './MidiPlayer';
+import 'html-midi-player';
 import * as mm from '@magenta/music';
 
 const { Option } = Select;
@@ -10,6 +10,7 @@ const VAEGenerator = ({ uploadedMidiRef }) => {
     const key = 'updatable';
     const warning = (content) => messageApi.open({ key, type: 'warning', content });
     const success = (content) => messageApi.open({ key, type: 'success', content });
+    const loading = (content) => messageApi.open({ key, type: 'loading', content, duration: 0 });
 
     const [style, setStyle] = useState('classical');
     const [musicVAE, setMusicVAE] = useState(null);
@@ -41,25 +42,28 @@ const VAEGenerator = ({ uploadedMidiRef }) => {
         }
 
         try {
+            loading('Генерація мелодії...');
             let sequence;
 
             // Якщо melodyStart є (завантажено початкову мелодію), використовуємо її для генерації варіацій
             if (uploadedMidiRef.current) {
                 console.log('Генерація варіацій за допомогою завантаженого файлу...');
                 const quantizedSequence = mm.sequences.quantizeNoteSequence(uploadedMidiRef.current, 4); // Квантуємо
-                sequence = await musicVAE.interpolate([quantizedSequence, quantizedSequence], 1);
-                console.log('Interpolated Sequence:', sequence);
+                // sequence = await musicVAE.interpolate([quantizedSequence, quantizedSequence], 1);
+
+                sequence = await musicVAE.similar(quantizedSequence, 1, 0.5);
+
+                console.log(sequence);
             } else {
                 console.log('Генерація випадкової музики...');
 
                 // Генерація випадкової музики з умовою стилю
                 const condition = getConditionForStyle(style);
-                const sample = await musicVAE.sample(1);  // Генерація випадкової музики з умовами
-                sequence = sample[0];
+                sequence = await musicVAE.sample(1);  // Генерація випадкової музики з умовами
             }
 
-            setGeneratedSequence(sequence);
-            success('Варіації VAE згенеровано! 🎼');
+            setGeneratedSequence(sequence[0]);
+            success('Варіації згенеровано!');
         } catch (error) {
             warning('Не вдалося згенерувати варіації.');
         }
@@ -88,6 +92,7 @@ const VAEGenerator = ({ uploadedMidiRef }) => {
         }
 
         try {
+            console.log("Відтворення: ", generatedSequence)
             const player = new mm.Player();
             player.start(generatedSequence);
             success('Відтворення варіації! 🎶');
@@ -120,6 +125,7 @@ const VAEGenerator = ({ uploadedMidiRef }) => {
         }
 
         try {
+            loading('Інтерполяція між двома мелодіями...');
             console.log('Інтерполяція між двома мелодіями...');
             const interpolated = await musicVAE.interpolate([melodyStart, melodyEnd], 5);
             setInterpolatedMelodies(interpolated);
@@ -154,17 +160,17 @@ const VAEGenerator = ({ uploadedMidiRef }) => {
                     <h3>Генерація варіацій</h3>
                     <div style={{ marginBottom: '20px' }}>
                         <Select value={style} onChange={setStyle} style={{ width: 200, marginRight: 20 }}>
-                            <Option value="classical">Classical</Option>
-                            <Option value="jazz">Jazz</Option>
-                            <Option value="pop">Pop</Option>
-                            <Option value="rock">Rock</Option>
+                            <Option value="classical">Класика</Option>
+                            <Option value="jazz">Джаз</Option>
+                            <Option value="pop">Рок</Option>
+                            {/* <Option value="rock">Rock</Option> */}
                         </Select>
                     </div>
                     <Button type="primary" onClick={generateVariations} style={{ marginRight: 10 }}>
-                        Generate Variations (VAE)
+                        Згенерувати мелодію
                     </Button>
                     <Button type="dashed" onClick={playVariation}>
-                        Play Variation
+                        Відтворити мелодію
                     </Button>
                 </Col>
 
@@ -173,41 +179,46 @@ const VAEGenerator = ({ uploadedMidiRef }) => {
                     <h3>Інтерполяція мелодій</h3>
                     <div style={{ marginBottom: '20px' }}>
                         <Upload beforeUpload={(file) => handleMidiUpload(file, true)} showUploadList={false}>
-                            <Button style={{ marginRight: 10 }}>Upload Start Melody</Button>
+                            <Button style={{ marginRight: 10 }}>Додайте 1 мелодію</Button>
                         </Upload>
                         <Upload beforeUpload={(file) => handleMidiUpload(file, false)} showUploadList={false}>
-                            <Button>Upload End Melody</Button>
+                            <Button>Додайте 2 мелодію</Button>
                         </Upload>
                     </div>
                     <Button type="primary" onClick={interpolateMelodies} style={{ marginRight: 10 }}>
-                        Interpolate Melodies
+                        Інтерполювати мелодії
                     </Button>
                 </Col>
             </Row>
 
             <Row style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
                 <div style={{ marginTop: '20px' }}>
-                    <MidiPlayer showMidiPlayer={false} />
+                    <section style={{ margin: '35px 0 0 0' }} id="section1">
+                        <midi-visualizer
+                            type="staff"
+                            src="https://cdn.jsdelivr.net/gh/cifkao/html-midi-player@2b12128/twinkle_twinkle.mid">
+                        </midi-visualizer>
+                    </section>
                 </div>
             </Row>
             <Row style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
                 {interpolatedMelodies.length > 0 && (
                     <div style={{ marginTop: '20px', marginLeft: '50px' }}>
-                        <h4>Interpolated Melodies</h4>
+                        <h4>Інтерпольовані мелодії</h4>
                         <List
-                        grid={{
-                            gutter: 100,
-                            column: 3,
-                        }}
+                            grid={{
+                                gutter: 100,
+                                column: 3,
+                            }}
                             itemLayout="horizontal"
                             dataSource={interpolatedMelodies}
                             renderItem={(item, index) => (
-                                <List.Item 
-                                style={{ cursor: 'pointer', width: '120px' }}
-                                onClick={() => playInterpolated(index)}>
+                                <List.Item
+                                    style={{ cursor: 'pointer', width: '120px' }}
+                                    onClick={() => playInterpolated(index)}>
                                     <List.Item.Meta
-                                        description={`Click to play melody ${index + 1}`}
-                                        />
+                                        description={`Відтворити мелодію ${index + 1}`}
+                                    />
                                 </List.Item>
                             )}
                         />

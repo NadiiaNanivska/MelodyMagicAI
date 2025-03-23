@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Button, message } from "antd";
 import MidiPlayer from "./MidiPlayer";
+import 'html-midi-player';
 
 const base_server_url = "http://127.0.0.1:8000";
 
@@ -60,17 +61,17 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
         <>
             {contextHolder}
             <div style={{ textAlign: "center", padding: "20px" }}>
-                <h2>🎼 Harmonize Melody</h2>
+                <h2>Гармонізація</h2>
 
                 {uploadedMidiRef.current ? (
-                    <p>File Loaded: melody.mid</p>
+                    <p>Файл додано</p>
                 ) : (
-                    <p>No MIDI file uploaded</p>
+                    <p>Жодного файлу не додано</p>
                 )}
 
                 <div style={{ marginTop: 20 }}>
                     <Button type="primary" onClick={harmonizeMelody}>
-                        Harmonize Melody
+                        Гармонізувати
                     </Button>
                 </div>
 
@@ -78,10 +79,20 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
                     <div style={{ marginTop: 20 }}>
                         <a href={harmonizedMidiUrl} download="harmonized_melody.mid">
                             <Button>
-                                Download Harmonized MIDI
+                                Завантажити отриманий midi-файл
                             </Button>
                         </a>
-                        <MidiPlayer fileUrl={harmonizedMidiUrl} showMidiPlayer={true} />
+                        <section style={{ margin: '35px 0 0 0' }} id="section1">
+                            <midi-visualizer
+                                type="staff"
+                                src="https://cdn.jsdelivr.net/gh/cifkao/html-midi-player@2b12128/twinkle_twinkle.mid">
+                            </midi-visualizer>
+                            {harmonizedMidiUrl && (
+                                <MidiPlayer
+                                    harmonizedMidiUrl={`http://127.0.0.1:8000/api/download/${harmonizedMidiUrl}`}
+                                />
+                            )}
+                        </section>
                     </div>
                 )}
             </div>
