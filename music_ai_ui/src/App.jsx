@@ -94,7 +94,7 @@ const App = () => {
           </Content>
         </Layout>
 
-        <Modal title="Завантажити аудіофайл" visible={isUploadModalVisible} onOk={handleUploadOk} onCancel={handleUploadCancel}>
+        <Modal title="Завантажити аудіофайл" visible={isUploadModalVisible} onOk={handleUploadOk} onCancel={handleUploadCancel} cancelText="Скасувати">
           <Upload customRequest={handleUpload} showUploadList={true} accept=".mid, .midi, .wav">
             <Button icon={<UploadOutlined />}>Натисніть, щоб завантажити аудіо</Button>
           </Upload>

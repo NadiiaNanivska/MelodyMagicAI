@@ -3,7 +3,7 @@ import { Button, message } from "antd";
 import MidiPlayer from "./MidiPlayer";
 import 'html-midi-player';
 
-const base_server_url = "http://127.0.0.1:8000";
+const base_server_url = "http://127.0.0.1:8000/api";
 
 const HarmonizeMelody = ({ uploadedMidiRef }) => {
     const [messageApi, contextHolder] = message.useMessage();
@@ -11,14 +11,14 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
     const [harmonizedMidiUrl, setHarmonizedMidiUrl] = useState(null);
 
     const error = (content) => messageApi.open({ key, type: 'error', content });
-    const loading = () => {
+    const success = (content) => messageApi.open({ key, type: 'success', content, duration: 2 });
+    const loading = (content = 'Processing...') => {
         messageApi.open({
             key,
             type: 'loading',
-            content: 'Melody harmonizing...',
+            content,
             duration: 0
         });
-        setTimeout(messageApi.destroy, 2500);
     };
 
     const harmonizeMelody = async () => {
@@ -27,7 +27,7 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
             return;
         }
 
-        console.log("Harmonizing melody...");
+        console.log("Uploading MIDI file...");
 
         const formData = new FormData();
         formData.append(
@@ -36,25 +36,45 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
             "melody.mid"
         );
 
-        const response = await fetch(`${base_server_url}/api/download/output.mid`, {
-            method: "GET",
-            type: "audio/midi",
-            //   body: formData,
-        });
+        try {
+            loading("Uploading MIDI file...");
+            const uploadResponse = await fetch(`${base_server_url}/upload_midi`, {
+                method: "POST",
+                body: formData,
+            });
 
-        loading();
+            if (!uploadResponse.ok) {
+                error("Failed to upload MIDI file.");
+                return;
+            }
 
-        if (!response.ok) {
-            error("Failed to harmonize melody.");
-            return;
+            const { filename } = await uploadResponse.json();
+            success("File uploaded successfully!");
+
+            console.log("Uploaded MIDI filename:", filename);
+
+            loading("Harmonizing melody...");
+            const harmonizeResponse = await fetch(`${base_server_url}/ffn/harmonize/${filename}`, {
+                method: "GET",
+            });
+
+            if (!harmonizeResponse.ok) {
+                error("Failed to harmonize melody.");
+                return;
+            }
+
+            const { midi_file } = await harmonizeResponse.json();
+            success("Melody harmonized!");
+
+            console.log("Harmonized MIDI filename:", midi_file);
+
+            const harmonizedUrl = `${base_server_url}/preview/${midi_file}`;
+            setHarmonizedMidiUrl(harmonizedUrl);
+            messageApi.destroy();
+        } catch (err) {
+            console.error("Error:", err);
+            error("Something went wrong.");
         }
-
-        const harmonizedMidi = await response.blob();
-        console.log("Harmonized MIDI:", harmonizedMidi);
-        const url = URL.createObjectURL(harmonizedMidi);
-        console.log("Harmonized MIDI URL:", url);
-        setHarmonizedMidiUrl(url);
-        messageApi.destroy();
     };
 
     return (
@@ -83,14 +103,9 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
                             </Button>
                         </a>
                         <section style={{ margin: '35px 0 0 0' }} id="section1">
-                            <midi-visualizer
-                                type="staff"
-                                src="https://cdn.jsdelivr.net/gh/cifkao/html-midi-player@2b12128/twinkle_twinkle.mid">
-                            </midi-visualizer>
+                            <midi-visualizer type="staff" src={harmonizedMidiUrl}></midi-visualizer>
                             {harmonizedMidiUrl && (
-                                <MidiPlayer
-                                    harmonizedMidiUrl={`http://127.0.0.1:8000/api/download/${harmonizedMidiUrl}`}
-                                />
+                                <MidiPlayer harmonizedMidiUrl={harmonizedMidiUrl} />
                             )}
                         </section>
                     </div>
