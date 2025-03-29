@@ -35,8 +35,9 @@ class GenerateRequest(BaseModel):
     start_notes: list[RawNotes] | None = None
     num_predictions: int
     temperature: float
+    tempo: int
 
-def generate_melody(start_notes, num_predictions, temperature):
+def generate_melody(start_notes, num_predictions, temperature, tempo):
     """Генерація мелодії за допомогою LSTM"""
     if start_notes is None:
         start_notes = [random.uniform(0, 1) for _ in range(SEQ_LENGTH)]
@@ -94,10 +95,10 @@ def generate_melody(start_notes, num_predictions, temperature):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_file = f'output_{timestamp}.mid'    
     notes_to_midi(
-        generated_notes, out_file='generated_midis/' + out_file, instrument_name=instrument_name)
+        generated_notes, out_file='generated_midis/' + out_file, instrument_name=instrument_name, tempo=tempo)
     return out_file 
 
 @router.post("/generate")
 def generate_music(request: GenerateRequest):
-    midi_file = generate_melody(request.start_notes, request.num_predictions, request.temperature)
+    midi_file = generate_melody(request.start_notes, request.num_predictions, request.temperature, request.tempo)
     return {"message": "LSTM мелодія згенерована", "midi_file": midi_file}
