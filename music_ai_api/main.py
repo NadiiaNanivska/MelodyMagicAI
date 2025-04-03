@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import APIRouter, FastAPI, BackgroundTasks, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,8 +7,16 @@ from routers import lstm_v1
 from routers import lstm_v2
 import os
 from fastapi.responses import FileResponse
+from datetime import datetime
+import asyncio
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await asyncio.to_thread(clean_old_files)
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,6 +32,21 @@ TEMP_DIR = "./generated_midis"
 
 UPLOAD_FOLDER = "./uploaded_midis"
 Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
+
+def clean_old_files():
+    today_date = datetime.today().strftime('%Y%m%d')
+    print(f"Видалення файлів, які не відповідають сьогоднішній даті {today_date}")
+    for filename in os.listdir(TEMP_DIR):
+        file_path = os.path.join(TEMP_DIR, filename)
+        if not filename.__contains__(today_date):
+            print(f"Файл {filename} не відповідає сьогоднішній даті")
+            if os.path.isfile(file_path):
+                try:
+                    os.remove(file_path)
+                    print(f"Файл {filename} видалено, оскільки його дата не відповідає сьогоднішній")
+                except Exception as e:
+                    print(f"Помилка видалення файлу {filename}: {e}")
+
 
 @apirouter.post("/upload_midi")
 async def upload_midi(file: UploadFile = File(...)):

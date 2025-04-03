@@ -158,14 +158,14 @@ const VAEGenerator = ({ uploadedMidiRef }) => {
                 {/* Перший стовпець: Генерація варіацій */}
                 <Col span={12}>
                     <h3>Генерація варіацій</h3>
-                    <div style={{ marginBottom: '20px' }}>
+                    {/* <div style={{ marginBottom: '20px' }}>
                         <Select value={style} onChange={setStyle} style={{ width: 200, marginRight: 20 }}>
                             <Option value="classical">Класика</Option>
                             <Option value="jazz">Джаз</Option>
                             <Option value="pop">Рок</Option>
-                            {/* <Option value="rock">Rock</Option> */}
+                            <Option value="rock">Rock</Option>
                         </Select>
-                    </div>
+                    </div> */}
                     <Button type="primary" onClick={generateVariations} style={{ marginRight: 10 }}>
                         Згенерувати мелодію
                     </Button>
