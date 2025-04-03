@@ -5,6 +5,7 @@ import MidiPlayer from './MidiPlayer';
 import 'html-midi-player';
 
 const base_server_url = "http://127.0.0.1:8000";
+const SEQ_LENGTH = 50;
 
 const midiToNote = (midiNumber) => {
     const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -20,7 +21,7 @@ const LSTMGenerator = () => {
     const loading = (content) => messageApi.open({ key, type: 'loading', content, duration: 0 });
 
     const [tempo, setTempo] = useState(120);
-    const [length, setLength] = useState(30);
+    const [length, setLength] = useState(SEQ_LENGTH);
 
     const startingNotesRef = useRef([]);
     const [startingNotes, setStartingNotes] = useState([]);
@@ -34,7 +35,7 @@ const LSTMGenerator = () => {
     }, []);
 
     const handleNoteSelect = useCallback((note) => {
-        if (startingNotesRef.current.length < length / 5) {
+        if (startingNotesRef.current.length < SEQ_LENGTH) {
             const newNote = {
                 pitch: note.pitch,
                 step: startingNotesRef.current.length === 0 ? 0 : 1,
@@ -43,7 +44,7 @@ const LSTMGenerator = () => {
             startingNotesRef.current.push(newNote);
             setStartingNotes((prev) => [...prev, midiToNote(newNote.pitch)]);
         } else {
-            warning(`Можна обрати не більше ${length / 5} нот.`);
+            warning(`Можна обрати не більше ${SEQ_LENGTH} нот.`);
         }
     }, [length]);
 
@@ -59,7 +60,8 @@ const LSTMGenerator = () => {
                 body: JSON.stringify({
                     start_notes: startingNotesRef.current,
                     num_predictions: length,
-                    temperature: 1.0
+                    temperature: 1.0,
+                    tempo: tempo
                 }),
             });
 
@@ -123,7 +125,7 @@ const LSTMGenerator = () => {
             <div ref={div}>
                 <div style={{ margin: '20px 0' }}>
                     <InputNumber min={60} max={200} value={tempo} onChange={setTempo} style={{ marginRight: 20 }} /> BPM
-                    <InputNumber min={4} max={64} value={length} onChange={setLength} style={{ marginLeft: 20 }} /> К-сть нот
+                    <InputNumber min={SEQ_LENGTH} max={400} value={length} onChange={setLength} style={{ marginLeft: 20 }} /> К-сть нот
                 </div>
 
                 <div style={{ padding: '20px' }}>

@@ -7,9 +7,10 @@ def notes_to_midi(
   out_file: str,
   instrument_name: str,
   velocity: int = 100,  # note loudness
+  tempo: int = 120     # tempo in BPM
 ) -> pretty_midi.PrettyMIDI:
 
-  pm = pretty_midi.PrettyMIDI()
+  pm = pretty_midi.PrettyMIDI(initial_tempo=tempo) 
   instrument = pretty_midi.Instrument(
       program=pretty_midi.instrument_name_to_program(
           instrument_name))
