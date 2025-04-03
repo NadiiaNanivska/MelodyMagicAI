@@ -1,114 +1,190 @@
-from fastapi import APIRouter, BackgroundTasks
-import music21
-from music21 import *
-from pydantic import BaseModel
-import os
+from datetime import datetime
+import logging
+from typing import List, Optional, Tuple
+
+from fastapi import APIRouter, HTTPException
+from pretty_midi import pretty_midi
 import numpy as np
 import pandas as pd
+from sklearn.calibration import LabelEncoder
 import tensorflow as tf
 
+from dto.request.lstm_dto import GenerateRequest, RawNotes
+from generation.loss_functions import diversity_loss
+from utils.midi_utils_v2 import (
+    classify_duration,
+    convert_duration_to_seconds,
+    get_note_durations_for_tempo,
+    notes_to_midi_categorical
+)
+from generation.lstm_generator import predict_next_note_categorical
+from common.constants import INSTRUMENT_NAMES, SEQ_LENGTH, VOCAB_SIZE
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
-SEQ_LENGTH = 40
-VOCAB_SIZE = 364
+class MelodyGenerator:
+    """Клас для генерації мелодій використовуючи LSTM модель."""
 
-model = tf.keras.models.load_model('models/best_model_kaggle_pond.keras')
+    def __init__(self, model_path: str):
+        """
+        Ініціалізація генератора мелодій.
 
-class RawNotes(BaseModel):
-    pitch: float
-    duration: float
+        Args:
+            model_path: Шлях до збереженої моделі LSTM
+        
+        Raises:
+            RuntimeError: Якщо не вдалося завантажити модель
+        """
+        try:
+            self.model = tf.keras.models.load_model(
+                model_path,
+                custom_objects={'diversity_loss': diversity_loss}
+            )
+            self.key_order = ['pitch', 'step', 'duration']
+            self.label_encoder = self._init_label_encoder()
+            logger.info(f"Model loaded successfully from {model_path}")
+        except Exception as e:
+            logger.error(f"Failed to load model: {e}")
+            raise RuntimeError(f"Failed to initialize melody generator: {e}")
 
-class GenerateRequest(BaseModel):
-    start_notes: list[RawNotes] | None = None
-    num_predictions: int
-    temperature: float
+    def _init_label_encoder(self) -> LabelEncoder:
+        """Ініціалізує і навчає LabelEncoder на тренувальних даних."""
+        try:
+            all_notes = pd.read_parquet('common/dataset_categorical.parquet')
+            train_notes = np.stack([all_notes[key] for key in self.key_order], axis=1)
+            label_encoder = LabelEncoder()
+            label_encoder.fit(train_notes[:, 2])
+            return label_encoder
+        except Exception as e:
+            logger.error(f"Failed to initialize label encoder: {e}")
+            raise RuntimeError(f"Label encoder initialization failed: {e}")
 
-def convertRequestToNotes(start_notes):
-    notes = []
-    notes_tmp = []
-    for note in start_notes:
-        notes_tmp.append(str(note.pitch) + '|' + str(note.duration))
-    notes = notes_tmp
-    while len(notes) < SEQ_LENGTH:
-        notes += notes_tmp
-    return notes
+    def _prepare_input_notes(
+        self,
+        start_notes: Optional[List[RawNotes]],
+        note_durations: dict,
+        tempo: int
+    ) -> np.ndarray:
+        """Підготовка вхідних нот для генерації."""
+        if start_notes is None:
+            return np.random.uniform(0, 1, (SEQ_LENGTH, 3))
+            
+        notes_array = np.array([[note.pitch, note.step, classify_duration(note.duration, note_durations)] 
+                for note in start_notes[:SEQ_LENGTH]])
+        
+        repetitions = -(-SEQ_LENGTH // len(notes_array)) 
+        notes_array = np.tile(notes_array, (repetitions, 1))
+        return notes_array[:SEQ_LENGTH]
 
-def generate_melody(start_notes, num_predictions, temperature):
-    seed_sequence, _, reverse_mapping = prepare_sequences(convertRequestToNotes(start_notes), SEQ_LENGTH)
-    print(seed_sequence)
-    generated_notes = generate_music(
-        model,
-        SEQ_LENGTH,
-        seed_sequence,
-        reverse_mapping,
-        VOCAB_SIZE,
-        num_predictions,
-        temperature
-    )
-    generated_melody = convert_to_music21(generated_notes)
-    filename = 'output.mid'
-    generated_melody.write('midi', filename)
+    def generate_melody(
+        self,
+        start_notes: Optional[List[RawNotes]],
+        num_predictions: int,
+        temperature: float,
+        tempo: int
+    ) -> str:
+        """
+        Генерація мелодії за допомогою LSTM.
 
+        Args:
+            start_notes: Початкові ноти для генерації
+            num_predictions: Кількість нот для генерації
+            temperature: Температура для семплінгу
+            tempo: Темп мелодії (BPM)
 
-def generate_music(model, seq_length, seed, reverse_mapping, n_vocab, num_notes, diversity=1.0):
-    current_sequence = seed.copy()
-    current_sequence = current_sequence.reshape(1, seq_length, 1)
-    generated_notes = []
-    for i in range(num_notes):
-        prediction = model.predict(current_sequence, verbose=0)[0]
-        prediction = np.log(prediction) / diversity
-        exp_preds = np.exp(prediction)
-        prediction = exp_preds / np.sum(exp_preds)
-        index = np.random.choice(len(prediction), p=prediction)
-        result = reverse_mapping[index]
-        generated_notes.append(result)
-        new_note = np.zeros((1, 1, 1))
-        new_note[0, 0, 0] = index / float(n_vocab)
-        current_sequence = np.concatenate((current_sequence[:, 1:, :], new_note), axis=1)
-    return generated_notes
+        Returns:
+            str: Назва згенерованого MIDI файлу
+        """
+        try:
+            note_durations = get_note_durations_for_tempo(tempo)
+            start_notes_array = self._prepare_input_notes(start_notes, note_durations, tempo)
+            
+            notes = {name: start_notes_array[:, i] for i, name in enumerate(self.key_order)}
+            start_notes_df = pd.DataFrame(notes)
 
-def convert_to_music21(note_list):
-    melody = stream.Stream()
-    offset = 0
-    for note_str in note_list:
-        parts = note_str.split('|')
-        pitch_str = parts[0]
-        duration_val = float(parts[1])
-        if '.' in pitch_str or pitch_str.isdigit():
-            chord_notes = pitch_str.split('.')
-            notes_in_chord = []
-            for p in chord_notes:
-                note_obj = music21.note.Note(int(p))
-                notes_in_chord.append(note_obj)
-            chord_obj = chord.Chord(notes_in_chord)
-            chord_obj.duration.quarterLength = duration_val
-            chord_obj.offset = offset
-            melody.append(chord_obj)
-        else:
-            note_obj = music21.note.Note(pitch_str)
-            note_obj.duration.quarterLength = duration_val
-            note_obj.offset = offset
-            melody.append(note_obj)
-        offset += duration_val
-    return melody
+            sample_notes = np.stack([start_notes_df[key] for key in self.key_order], axis=1)
 
-def prepare_sequences(corpus, seq_length=40):
-    unique_notes = sorted(list(set(corpus)))
-    mapping = dict((c, i) for i, c in enumerate(unique_notes))
-    reverse_mapping = dict((i, c) for i, c in enumerate(unique_notes))
-    n_vocab = len(unique_notes)
-    input_sequences = []
-    output_notes = []
-    for i in range(0, len(corpus) - seq_length, 1):
-        sequence_in = corpus[i:i + seq_length]
-        sequence_out = corpus[i + seq_length]
-        input_sequences.append([mapping[char] for char in sequence_in])
-        output_notes.append(mapping[sequence_out])
-    n_patterns = len(input_sequences)
-    X = np.reshape(input_sequences, (n_patterns, seq_length, 1)) / float(n_vocab)
-    return X, mapping, reverse_mapping
+            normalization_factors = np.array([VOCAB_SIZE, 1, 1])
+
+            pitch = sample_notes[:, 0].astype(np.float64)
+            duration = sample_notes[:, 1].astype(np.float64)
+            note_type_encoded = self.label_encoder.transform(sample_notes[:, 2]).astype(np.float64)
+            sample_notes = np.stack([pitch, duration, note_type_encoded], axis=1)
+
+            input_notes = (sample_notes[:SEQ_LENGTH] / normalization_factors)
+
+            generated_notes = []
+            prev_start = 0
+
+            for _ in range(num_predictions):
+                pitch, step, duration = predict_next_note_categorical(input_notes, self.model, temperature)
+                duration_label = self.label_encoder.inverse_transform(np.array([int(duration)]))
+                duration_in_seconds = convert_duration_to_seconds(duration_label, tempo)
+                
+                start = prev_start + step
+                end = start + duration_in_seconds
+
+                normalized_pitch = pitch / VOCAB_SIZE
+                next_input_note = np.array([normalized_pitch, step, duration])
+                generated_notes.append((pitch, step, duration_label, start, end))
+
+                input_notes = np.delete(input_notes, 0, axis=0)
+                input_notes = np.append(input_notes, np.expand_dims(next_input_note, 0), axis=0)
+                prev_start = start
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            out_file = f'output_{timestamp}.mid'
+            
+            self._save_midi(generated_notes, self.key_order, tempo, out_file)
+            logger.info(f"Generated melody saved to {out_file}")
+            return out_file
+            
+        except Exception as e:
+            logger.error(f"Melody generation failed: {e}")
+            raise e
+
+    def _save_midi(
+        self,
+        generated_notes: List[Tuple],
+        key_order: List[str],
+        tempo: int,
+        out_file: str
+    ) -> None:
+        """Зберігає згенеровані ноти у MIDI файл."""
+        notes_df = pd.DataFrame(generated_notes, columns=(*key_order, 'start', 'end'))
+        pm = pretty_midi.PrettyMIDI()
+        instrument = pretty_midi.Instrument(program=0, name="Acoustic Grand Piano")
+        pm.instruments.append(instrument)
+        instrument_name = INSTRUMENT_NAMES.get(instrument.program, "Unknown Instrument")
+        
+        notes_to_midi_categorical(
+            notes_df,
+            out_file='generated_midis/' + out_file,
+            instrument_name=instrument_name,
+            bpm=tempo
+        )
+
+# Ініціалізація генератора мелодій
+melody_generator = MelodyGenerator('models/ckpt_best.model_lstm_attention_categorical_new.keras')
 
 @router.post("/generate")
-def generate(request: GenerateRequest):
-    midi_file = generate_melody(request.start_notes, request.num_predictions, request.temperature)
-    return {"message": "LSTM мелодія згенерована", "midi_file": midi_file}
+async def generate_music(request: GenerateRequest) -> dict:
+    """API endpoint для генерації мелодії."""
+    try:
+        midi_file = melody_generator.generate_melody(
+            request.start_notes,
+            request.num_predictions,
+            request.temperature,
+            request.tempo
+        )
+        return {
+            "message": "LSTM мелодія згенерована",
+            "midi_file": midi_file
+        }
+    except Exception as e:
+        logger.error(f"Music generation failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )

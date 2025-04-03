@@ -1,52 +1,57 @@
 from datetime import datetime
 from fastapi import APIRouter
-import pretty_midi
-from pydantic import BaseModel
+from  pretty_midi import pretty_midi
 import numpy as np
 import pandas as pd
 import random
 
 import tensorflow as tf
-from utils.midi_utils import notes_to_midi
+from common.constants import INSTRUMENT_NAMES, SEQ_LENGTH, VOCAB_SIZE
+from dto.request.lstm_dto import GenerateRequest
+from generation.loss_functions import diversity_loss, percentile_loss
+from utils.midi_utils_v1 import notes_to_midi
 from generation.lstm_generator import predict_next_note
 
 router = APIRouter()
 
-def mse_with_positive_pressure(y_true: tf.Tensor, y_pred: tf.Tensor):
-  mse = (y_true - y_pred) ** 2
-  positive_pressure = 10 * tf.maximum(-y_pred, 0.0)
-  return tf.reduce_mean(mse + positive_pressure)
+# model = tf.keras.models.load_model('models/ckpt_best.model_v2_3.keras',
+#                                    custom_objects={'mse_with_positive_pressure': mse_with_positive_pressure})
 
-model = tf.keras.models.load_model('models/ckpt_best.model_v2_3.keras',
-                                   custom_objects={'mse_with_positive_pressure': mse_with_positive_pressure})
+model = tf.keras.models.load_model('models/ckpt_best.model_lstm_attention_22.keras',
+                                   custom_objects={'diversity_loss': diversity_loss,
+                                                     'percentile_loss': percentile_loss})
 
 print(model.summary())
 
-# Константи
-SEQ_LENGTH = 50
-VOCAB_SIZE = 128
-
-class RawNotes(BaseModel):
-    pitch: float
-    duration: float
-    step: float
-
-class GenerateRequest(BaseModel):
-    start_notes: list[RawNotes] | None = None
-    num_predictions: int
-    temperature: float
-    tempo: int
 
 def generate_melody(start_notes, num_predictions, temperature, tempo):
-    """Генерація мелодії за допомогою LSTM"""
+    """Генерація мелодії за допомогою LSTM з Context Bridging та Transposition Post-Processing"""
     if start_notes is None:
         start_notes = [random.uniform(0, 1) for _ in range(SEQ_LENGTH)]
     
-    start_notes_array = np.array([[note.pitch, note.duration,note.step] for note in start_notes[:SEQ_LENGTH]])
+    # Convert start notes to array format
+    start_notes_array = np.array([[note.pitch, note.duration, note.step] for note in start_notes[:SEQ_LENGTH]])
     while len(start_notes_array) < SEQ_LENGTH:
         start_notes_array = np.concatenate((start_notes_array, start_notes_array))
     start_notes_array = start_notes_array[:SEQ_LENGTH]
 
+    # Save original pitch information for later transposition
+    original_pitches = start_notes_array[:, 0].copy()
+    original_avg_pitch = np.mean(original_pitches)
+    
+    # Apply Context Bridging: Create a smooth transition to model's preferred range
+    model_preferred_range = (50, 80)  # The range your model typically generates in
+    target_avg_pitch = sum(model_preferred_range) / 2
+    
+    # Create bridge between original pitches and target range
+    bridge_length = min(8, SEQ_LENGTH // 2)
+    for i in range(bridge_length):
+        # Gradually shift from seed to target range
+        ratio = (i + 1) / bridge_length
+        idx = SEQ_LENGTH - bridge_length + i
+        shifted_pitch = original_pitches[idx] * (1 - ratio) + target_avg_pitch * ratio
+        start_notes_array[idx, 0] = shifted_pitch
+    
     key_order = ['pitch', 'step', 'duration']
     notes = {name: start_notes_array[:, i] for i, name in enumerate(key_order)}
     start_notes = pd.DataFrame(notes)
@@ -60,11 +65,9 @@ def generate_melody(start_notes, num_predictions, temperature, tempo):
     ])
 
     # sequences
-    input_notes = (
-        sample_notes[:SEQ_LENGTH] /normalization_factors)
+    input_notes = (sample_notes[:SEQ_LENGTH] / normalization_factors)
     
     generated_notes = []
-
     prev_start = 0
 
     for _ in range(num_predictions):
@@ -73,7 +76,6 @@ def generate_melody(start_notes, num_predictions, temperature, tempo):
         start = prev_start + step
         end = start + duration
 
-        # Нормалізація для наступного прогнозу
         normalized_pitch = pitch / VOCAB_SIZE
 
         next_input_note = np.array([normalized_pitch, step, duration])
@@ -86,17 +88,28 @@ def generate_melody(start_notes, num_predictions, temperature, tempo):
 
     generated_notes = pd.DataFrame(
         generated_notes, columns=(*key_order, 'start', 'end'))
+    
+    # Apply Transposition Post-Processing
+    # Calculate the pitch shift needed to match original pitch average
+    generated_avg_pitch = generated_notes['pitch'].mean()
+    pitch_shift = int(round(original_avg_pitch - generated_avg_pitch))
+    
+    # Apply transposition to the generated notes
+    generated_notes['pitch'] = generated_notes['pitch'].apply(
+        lambda p: max(0, min(127, p + pitch_shift))
+    )
 
-    print("Generated motes\n", generated_notes)
+    print("Generated notes after transposition\n", generated_notes)
+    
     pm = pretty_midi.PrettyMIDI()
     instrument = pretty_midi.Instrument(program=0, name="Acoustic Grand Piano")
     pm.instruments.append(instrument)
-    instrument_name = pretty_midi.program_to_instrument_name(instrument.program)
+    instrument_name = INSTRUMENT_NAMES.get(instrument.program, "Unknown Instrument")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_file = f'output_{timestamp}.mid'    
     notes_to_midi(
         generated_notes, out_file='generated_midis/' + out_file, instrument_name=instrument_name, tempo=tempo)
-    return out_file 
+    return out_file
 
 @router.post("/generate")
 def generate_music(request: GenerateRequest):

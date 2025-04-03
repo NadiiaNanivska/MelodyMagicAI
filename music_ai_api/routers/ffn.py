@@ -8,8 +8,8 @@ import utils.ffn_utils.dataset_note_info_generator as note_generator
 import utils.ffn_utils.constants as constants
 
 from utils.ffn_utils.data_midi_loader import load_custom_midi_data
-from generation.forward_network import ForwardNetwork
-from generation.network_harmony_generator import NetworkHarmonyGenerator
+from generation.ffn_generator.forward_network import ForwardNetwork
+from generation.ffn_generator.network_harmony_generator import NetworkHarmonyGenerator
 
 router = APIRouter()
 
