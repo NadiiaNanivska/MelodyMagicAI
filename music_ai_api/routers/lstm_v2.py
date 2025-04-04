@@ -18,7 +18,7 @@ from utils.midi_utils_v2 import (
     notes_to_midi_categorical
 )
 from generation.lstm_generator import predict_next_note_categorical
-from common.constants import INSTRUMENT_NAMES, SEQ_LENGTH, VOCAB_SIZE
+from common.constants import INSTRUMENT_NAMES, SEQ_LENGTH, PITCH_VOCAB_SIZE
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -105,7 +105,7 @@ class MelodyGenerator:
 
             sample_notes = np.stack([start_notes_df[key] for key in self.key_order], axis=1)
 
-            normalization_factors = np.array([VOCAB_SIZE, 1, 1])
+            normalization_factors = np.array([PITCH_VOCAB_SIZE, 1, 1])
 
             pitch = sample_notes[:, 0].astype(np.float64)
             duration = sample_notes[:, 1].astype(np.float64)
@@ -125,7 +125,7 @@ class MelodyGenerator:
                 start = prev_start + step
                 end = start + duration_in_seconds
 
-                normalized_pitch = pitch / VOCAB_SIZE
+                normalized_pitch = pitch / PITCH_VOCAB_SIZE
                 next_input_note = np.array([normalized_pitch, step, duration])
                 generated_notes.append((pitch, step, duration_label, start, end))
 

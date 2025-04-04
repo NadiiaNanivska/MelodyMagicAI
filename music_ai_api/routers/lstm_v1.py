@@ -6,7 +6,7 @@ import pandas as pd
 import random
 
 import tensorflow as tf
-from common.constants import INSTRUMENT_NAMES, SEQ_LENGTH, VOCAB_SIZE
+from common.constants import INSTRUMENT_NAMES, SEQ_LENGTH, PITCH_VOCAB_SIZE
 from dto.request.lstm_dto import GenerateRequest
 from generation.loss_functions import diversity_loss, percentile_loss
 from utils.midi_utils_v1 import notes_to_midi
@@ -59,7 +59,7 @@ def generate_melody(start_notes, num_predictions, temperature, tempo):
     sample_notes = np.stack([start_notes[key] for key in key_order], axis=1)
 
     normalization_factors = np.array([
-        VOCAB_SIZE,           
+        PITCH_VOCAB_SIZE,           
         1,                    
         1
     ])
@@ -76,7 +76,7 @@ def generate_melody(start_notes, num_predictions, temperature, tempo):
         start = prev_start + step
         end = start + duration
 
-        normalized_pitch = pitch / VOCAB_SIZE
+        normalized_pitch = pitch / PITCH_VOCAB_SIZE
 
         next_input_note = np.array([normalized_pitch, step, duration])
         generated_notes.append((pitch, step, duration, start, end))

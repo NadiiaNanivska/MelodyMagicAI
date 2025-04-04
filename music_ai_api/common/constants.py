@@ -1,9 +1,5 @@
 from music21 import duration
 
-ROUND_PRECISION = 4
-SEQ_LENGTH = 50
-VOCAB_SIZE = 128
-
 all_durations = duration.typeFromNumDict
 excluded_durations = {'breve', 'longa', 'maxima', 'duplex-maxima', 'zero'}
 valid_durations = {
@@ -17,3 +13,8 @@ INSTRUMENT_NAMES = {
     1: "Bright Acoustic Piano",
     2: "Electric Grand Piano",
 }
+
+ROUND_PRECISION = 4
+SEQ_LENGTH = 50
+PITCH_VOCAB_SIZE = 128
+DURATION_VOCAB_SIZE = len(valid_durations)
