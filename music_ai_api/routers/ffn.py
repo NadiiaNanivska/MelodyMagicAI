@@ -10,6 +10,9 @@ import utils.ffn_utils.constants as constants
 from utils.ffn_utils.data_midi_loader import load_custom_midi_data
 from generation.ffn_generator.forward_network import ForwardNetwork
 from generation.ffn_generator.network_harmony_generator import NetworkHarmonyGenerator
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 router = APIRouter()
 
@@ -28,7 +31,7 @@ def harmonize_midi(filename: str):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="MIDI file not found")
     
-    print(f'Generating harmony for {filename}')
+    logger.info(f'Generating harmony for {filename}')
     harmony_generator = NetworkHarmonyGenerator(network)
     _, val_dataset = load_custom_midi_data(midi_file_path)
     (x_soprano_sample, _, _, _) = val_dataset[:constants.BATCH_SIZE]

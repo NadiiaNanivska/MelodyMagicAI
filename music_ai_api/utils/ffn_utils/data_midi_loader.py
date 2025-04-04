@@ -4,6 +4,9 @@ from utils.ffn_models.voices import voices
 from utils.ffn_models.chorales_dataset import ChoralesDataset
 import os
 import numpy as np
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 def load_custom_midi_data(midi_files_dir, test_size=0.2, random_seed=42):
@@ -26,8 +29,8 @@ def load_custom_midi_data(midi_files_dir, test_size=0.2, random_seed=42):
     
     # Перевірка, чи є достатньо файлів
     if len(midi_files) < 4:
-        print(f"Увага: знайдено лише {len(midi_files)} MIDI-файлів, а потрібно мінімум 4.")
-        print("Будемо використовувати доступні файли і дублювати їх, якщо потрібно.")
+        logger.info(f"Увага: знайдено лише {len(midi_files)} MIDI-файлів, а потрібно мінімум 4.")
+        logger.info("Будемо використовувати доступні файли і дублювати їх, якщо потрібно.")
         
         # Якщо файлів менше 4, дублюємо наявні файли
         while len(midi_files) < 4:
@@ -35,7 +38,7 @@ def load_custom_midi_data(midi_files_dir, test_size=0.2, random_seed=42):
     
     # Відбираємо перші 4 файли
     midi_files = midi_files[:4]
-    print(f"Використовуємо файли: {midi_files}")
+    logger.info(f"Використовуємо файли: {midi_files}")
     
     # Зберігаємо дані MIDI для повернення
     midi_data_all = []
@@ -43,7 +46,7 @@ def load_custom_midi_data(midi_files_dir, test_size=0.2, random_seed=42):
     # Обробляємо кожен MIDI-файл
     for idx, midi_file in enumerate(midi_files):
         midi_file_path = os.path.join(midi_files_dir, midi_file)
-        print(f"Обробка файлу {idx+1}/4: {midi_file}")
+        logger.info(f"Обробка файлу {idx+1}/4: {midi_file}")
         
         # Завантаження MIDI-файлу
         midi_data = analyze_simultaneous_pitches(midi_file_path)

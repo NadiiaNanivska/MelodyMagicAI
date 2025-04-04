@@ -52,7 +52,7 @@ const LSTMGenerator = () => {
         try {
             loading('Генерація мелодії...');
 
-            const response = await fetch(`${base_server_url}/api/v1/lstm/generate`, {
+            const response = await fetch(`${base_server_url}/api/v2/lstm/generate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -83,7 +83,7 @@ const LSTMGenerator = () => {
     const randomMelody = () => {
         const popularDurations = [0.25, 0.5, 1, 1.5, 2];
 
-        const randomNotes = Array.from({ length: 5 }, () => {
+        const randomNotes = Array.from({ length: SEQ_LENGTH }, () => {
             const pitch = 60 + Math.floor(Math.random() * 12);
 
             const newNote = {

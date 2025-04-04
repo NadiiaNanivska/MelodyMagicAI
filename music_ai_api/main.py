@@ -1,14 +1,16 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
+import sys
 from fastapi import APIRouter, FastAPI, BackgroundTasks, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from routers import ffn
-from routers import lstm_v1
-from routers import lstm_v2
+from routers import ffn, lstm_v1, lstm_v2
 import os
 from fastapi.responses import FileResponse
 from datetime import datetime
 import asyncio
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,24 +31,24 @@ app.add_middleware(
 apirouter = APIRouter()
 
 TEMP_DIR = "./generated_midis"
+Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
 UPLOAD_FOLDER = "./uploaded_midis"
 Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
 
 def clean_old_files():
     today_date = datetime.today().strftime('%Y%m%d')
-    print(f"Видалення файлів, які не відповідають сьогоднішній даті {today_date}")
+    logger.info(f"Видалення файлів, які не відповідають сьогоднішній даті {today_date}")
     for filename in os.listdir(TEMP_DIR):
         file_path = os.path.join(TEMP_DIR, filename)
         if not filename.__contains__(today_date):
-            print(f"Файл {filename} не відповідає сьогоднішній даті")
+            logger.info(f"Файл {filename} не відповідає сьогоднішній даті")
             if os.path.isfile(file_path):
                 try:
                     os.remove(file_path)
-                    print(f"Файл {filename} видалено, оскільки його дата не відповідає сьогоднішній")
+                    logger.info(f"Файл {filename} видалено")
                 except Exception as e:
-                    print(f"Помилка видалення файлу {filename}: {e}")
-
+                    logger.error(f"Помилка при видаленні файлу {filename}: {str(e)}")
 
 @apirouter.post("/upload_midi")
 async def upload_midi(file: UploadFile = File(...)):
@@ -62,18 +64,18 @@ def remove_file(file_path: str):
     try:
         if os.path.exists(file_path):
             os.remove(file_path)
-            print(f"Файл {file_path} видалено")
+            logger.info(f"Файл {file_path} видалено")
     except Exception as e:
-        print(f"Помилка видалення файлу {file_path}: {e}")
+        logger.warning(f"Помилка видалення файлу {file_path}: {e}")
 
 @apirouter.get("/download/{filename}")
 def download_midi(filename: str, background_tasks: BackgroundTasks):
-    print(f"Запит на скачування файлу {filename}")
+    logger.info(f"Запит на скачування файлу {filename}")
     file_path = os.path.join(TEMP_DIR, filename)
     if not os.path.exists(file_path):
         return {"error": "Файл не знайдено"}
 
-    background_tasks.add_task(remove_file, file_path)  # Видаляємо файл після відправки
+    background_tasks.add_task(remove_file, file_path)
     return FileResponse(file_path, media_type="audio/midi", filename=filename)
 
 @apirouter.get("/preview/{filename}")

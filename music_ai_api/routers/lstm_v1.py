@@ -11,6 +11,9 @@ from dto.request.lstm_dto import GenerateRequest
 from generation.loss_functions import diversity_loss, percentile_loss
 from utils.midi_utils_v1 import notes_to_midi
 from generation.lstm_generator import predict_next_note
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 router = APIRouter()
 
@@ -21,7 +24,7 @@ model = tf.keras.models.load_model('models/ckpt_best.model_lstm_attention_22.ker
                                    custom_objects={'diversity_loss': diversity_loss,
                                                      'percentile_loss': percentile_loss})
 
-print(model.summary())
+logger.info(model.summary())
 
 
 def generate_melody(start_notes, num_predictions, temperature, tempo):
@@ -99,7 +102,7 @@ def generate_melody(start_notes, num_predictions, temperature, tempo):
         lambda p: max(0, min(127, p + pitch_shift))
     )
 
-    print("Generated notes after transposition\n", generated_notes)
+    logger.info("Generated notes after transposition\n", generated_notes)
     
     pm = pretty_midi.PrettyMIDI()
     instrument = pretty_midi.Instrument(program=0, name="Acoustic Grand Piano")

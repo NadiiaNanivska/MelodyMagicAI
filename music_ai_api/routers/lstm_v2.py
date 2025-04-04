@@ -19,8 +19,10 @@ from utils.midi_utils_v2 import (
 )
 from generation.lstm_generator import predict_next_note_categorical
 from common.constants import INSTRUMENT_NAMES, SEQ_LENGTH, PITCH_VOCAB_SIZE
+from utils.logger import setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
+
 router = APIRouter()
 
 class MelodyGenerator:
@@ -133,6 +135,9 @@ class MelodyGenerator:
                 input_notes = np.append(input_notes, np.expand_dims(next_input_note, 0), axis=0)
                 prev_start = start
 
+            notes_df = pd.DataFrame(generated_notes, columns=['pitch', 'step', 'duration', 'start', 'end'])
+            logger.info("Generated notes as table:\n", notes_df)
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             out_file = f'output_{timestamp}.mid'
             
@@ -166,7 +171,7 @@ class MelodyGenerator:
         )
 
 # Ініціалізація генератора мелодій
-melody_generator = MelodyGenerator('models/ckpt_best.model_lstm_attention_categorical_new.keras')
+melody_generator = MelodyGenerator('models/ckpt_best.model_lstm_attention_categorical.keras')
 
 @router.post("/generate")
 async def generate_music(request: GenerateRequest) -> dict:

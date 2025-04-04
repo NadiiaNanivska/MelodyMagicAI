@@ -1,9 +1,9 @@
 import pandas as pd
 import pretty_midi
-import logging
 from common.constants import ROUND_PRECISION, valid_durations
+from utils.logger import setup_logger
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 def get_note_durations_for_tempo(bpm):
     if bpm is None:
@@ -36,32 +36,43 @@ def convert_duration_to_seconds(duration_label, bpm):
     return duration_in_seconds
 
 def notes_to_midi_categorical(
-  notes: pd.DataFrame,
-  out_file: str,
-  instrument_name: str,
-  bpm = 120,
-  velocity: int = 100
+    notes: pd.DataFrame,
+    out_file: str,
+    instrument_name: str,
+    bpm = 120,
+    velocity: int = 100,
+    max_active_notes: int = 3
 ) -> pretty_midi.PrettyMIDI:
 
-  pm = pretty_midi.PrettyMIDI()
-  instrument = pretty_midi.Instrument(
-      program=pretty_midi.instrument_name_to_program(
-          instrument_name))
+    pm = pretty_midi.PrettyMIDI(initial_tempo=bpm) 
+    instrument = pretty_midi.Instrument(
+        program=pretty_midi.instrument_name_to_program(
+            instrument_name))
 
-  prev_start = 0
-  for i, note in notes.iterrows():
-    duration_in_seconds = convert_duration_to_seconds(note['duration'], bpm)
-    start = float(prev_start + note['step'])
-    end = float(start + duration_in_seconds)
-    note = pretty_midi.Note(
-        velocity=velocity,
-        pitch=int(note['pitch']),
-        start=start,
-        end=end,
-    )
-    instrument.notes.append(note)
-    prev_start = start
+    prev_start = 0
+    active_notes = []
 
-  pm.instruments.append(instrument)
-  pm.write(out_file)
-  return pm
+    for i, note in notes.iterrows():
+        duration_in_seconds = convert_duration_to_seconds(note['duration'], bpm)
+        start = float(prev_start + note['step'])
+        end = float(start + duration_in_seconds)
+
+        # Remove notes that have ended
+        active_notes = [n for n in active_notes if n.end > start]
+
+        # Check if adding this note exceeds the max_active_notes limit
+        if len(active_notes) < max_active_notes:
+            new_note = pretty_midi.Note(
+                velocity=velocity,
+                pitch=int(note['pitch']),
+                start=start,
+                end=end,
+            )
+            instrument.notes.append(new_note)
+            active_notes.append(new_note)
+
+        prev_start = start
+
+    pm.instruments.append(instrument)
+    pm.write(out_file)
+    return pm
