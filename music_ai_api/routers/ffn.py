@@ -3,6 +3,7 @@ import torch
 import os
 from datetime import datetime
 
+from dto.response.generate_response import GenerateResponse
 import utils.ffn_utils.midi_generator as midi_generator
 import utils.ffn_utils.dataset_note_info_generator as note_generator
 import utils.ffn_utils.constants as constants
@@ -45,4 +46,4 @@ def harmonize_midi(filename: str):
     
     midi_generator.generate_midi(output_path, generated_note_infos)
     
-    return {"midi_file": output_filename}
+    return GenerateResponse(message="Мелодія гармонізована успішно", midi_file=output_filename). model_dump()

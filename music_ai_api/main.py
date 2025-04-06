@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
-import sys
 from fastapi import APIRouter, FastAPI, BackgroundTasks, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from common.constants import FILE_NOT_FOUND
+from dto.response.generate_response import GenerateResponse
 from routers import ffn, lstm_v1, lstm_v2
 import os
 from fastapi.responses import FileResponse
@@ -12,29 +13,18 @@ from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    await asyncio.to_thread(clean_old_files)
-    yield
-
-
-app = FastAPI(lifespan=lifespan)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-apirouter = APIRouter()
-
 TEMP_DIR = "./generated_midis"
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
 UPLOAD_FOLDER = "./uploaded_midis"
 Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await asyncio.to_thread(clean_old_files)
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 def clean_old_files():
     today_date = datetime.today().strftime('%Y%m%d')
@@ -50,15 +40,6 @@ def clean_old_files():
                 except Exception as e:
                     logger.error(f"Помилка при видаленні файлу {filename}: {str(e)}")
 
-@apirouter.post("/upload_midi")
-async def upload_midi(file: UploadFile = File(...)):
-    if not file.filename.endswith(".mid"):
-        raise HTTPException(status_code=400, detail="Only .mid files are allowed")
-    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
-    return {"message": "File uploaded successfully", "filename": file.filename}
-
 def remove_file(file_path: str):
     """Функція для видалення файлу після скачування"""
     try:
@@ -68,12 +49,31 @@ def remove_file(file_path: str):
     except Exception as e:
         logger.warning(f"Помилка видалення файлу {file_path}: {e}")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+apirouter = APIRouter()
+
+@apirouter.post("/upload_midi")
+async def upload_midi(file: UploadFile = File(...)):
+    if not file.filename.endswith(".mid"):
+        raise HTTPException(status_code=400, detail="Лише .mid файли дозволені")
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
+    return GenerateResponse(message="Файл завантажено успішно", midi_file=file.filename). model_dump()
+
 @apirouter.get("/download/{filename}")
 def download_midi(filename: str, background_tasks: BackgroundTasks):
     logger.info(f"Запит на скачування файлу {filename}")
     file_path = os.path.join(TEMP_DIR, filename)
     if not os.path.exists(file_path):
-        return {"error": "Файл не знайдено"}
+        return {"error": FILE_NOT_FOUND}
 
     background_tasks.add_task(remove_file, file_path)
     return FileResponse(file_path, media_type="audio/midi", filename=filename)
@@ -82,7 +82,7 @@ def download_midi(filename: str, background_tasks: BackgroundTasks):
 def preview_midi(filename: str):
     file_path = os.path.join(TEMP_DIR, filename)
     if not os.path.exists(file_path):
-        return {"error": "Файл не знайдено"}
+        return {"error": FILE_NOT_FOUND}
 
     return FileResponse(file_path, media_type="audio/midi", filename=filename)
 

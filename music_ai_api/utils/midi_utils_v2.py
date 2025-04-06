@@ -49,29 +49,25 @@ def notes_to_midi_categorical(
         program=pretty_midi.instrument_name_to_program(
             instrument_name))
 
-    prev_start = 0
     active_notes = []
 
     for i, note in notes.iterrows():
-        duration_in_seconds = convert_duration_to_seconds(note['duration'], bpm)
-        start = float(prev_start + note['step'])
-        end = float(start + duration_in_seconds)
+        # duration_in_seconds = convert_duration_to_seconds(note['duration'], bpm)
+        # start = float(prev_start + note['step'])
+        # end = float(start + duration_in_seconds)
 
         # Remove notes that have ended
-        active_notes = [n for n in active_notes if n.end > start]
+        active_notes = [n for n in active_notes if n.end > note['start']]
 
-        # Check if adding this note exceeds the max_active_notes limit
         if len(active_notes) < max_active_notes:
             new_note = pretty_midi.Note(
                 velocity=velocity,
                 pitch=int(note['pitch']),
-                start=start,
-                end=end,
+                start=note['start'],
+                end=note['end'],
             )
             instrument.notes.append(new_note)
             active_notes.append(new_note)
-
-        prev_start = start
 
     pm.instruments.append(instrument)
     pm.write(out_file)

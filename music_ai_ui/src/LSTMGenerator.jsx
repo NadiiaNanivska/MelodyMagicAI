@@ -124,7 +124,7 @@ const LSTMGenerator = () => {
             {contextHolder}
             <div ref={div}>
                 <div style={{ margin: '20px 0' }}>
-                    <InputNumber min={60} max={200} value={tempo} onChange={setTempo} style={{ marginRight: 20 }} /> BPM
+                    <InputNumber min={40} max={240} value={tempo} onChange={setTempo} style={{ marginRight: 20 }} /> BPM
                     <InputNumber min={SEQ_LENGTH} max={400} value={length} onChange={setLength} style={{ marginLeft: 20 }} /> К-сть нот
                 </div>
 

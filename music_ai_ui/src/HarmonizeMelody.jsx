@@ -12,7 +12,7 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
 
     const error = (content) => messageApi.open({ key, type: 'error', content });
     const success = (content) => messageApi.open({ key, type: 'success', content, duration: 2 });
-    const loading = (content = 'Processing...') => {
+    const loading = (content = 'Гармонізація...') => {
         messageApi.open({
             key,
             type: 'loading',
@@ -23,7 +23,7 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
 
     const harmonizeMelody = async () => {
         if (!uploadedMidiRef.current) {
-            error("No MIDI file uploaded!");
+            error("Жоден MIDI файл не завантажено!");
             return;
         }
 
@@ -37,34 +37,34 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
         );
 
         try {
-            loading("Uploading MIDI file...");
+            loading("Завантаження MIDI файлу...");
             const uploadResponse = await fetch(`${base_server_url}/upload_midi`, {
                 method: "POST",
                 body: formData,
             });
 
             if (!uploadResponse.ok) {
-                error("Failed to upload MIDI file.");
+                error("Не вдалось завантажити MIDI файл.");
                 return;
             }
 
-            const { filename } = await uploadResponse.json();
-            success("File uploaded successfully!");
+            const { midi_file: uploaded_midi_file } = await uploadResponse.json();
+            success("Файл завантажено успішно!");
 
-            console.log("Uploaded MIDI filename:", filename);
+            console.log("Uploaded MIDI filename:", uploaded_midi_file);
 
-            loading("Harmonizing melody...");
-            const harmonizeResponse = await fetch(`${base_server_url}/ffn/harmonize/${filename}`, {
+            loading("Гармонізація мелодії...");
+            const harmonizeResponse = await fetch(`${base_server_url}/ffn/harmonize/${uploaded_midi_file}`, {
                 method: "GET",
             });
 
             if (!harmonizeResponse.ok) {
-                error("Failed to harmonize melody.");
+                error("Не вдалось гармонізувати мелодію.");
                 return;
             }
 
             const { midi_file } = await harmonizeResponse.json();
-            success("Melody harmonized!");
+            success("Мелодія успішно гармонізована!");
 
             console.log("Harmonized MIDI filename:", midi_file);
 
@@ -73,7 +73,7 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
             messageApi.destroy();
         } catch (err) {
             console.error("Error:", err);
-            error("Something went wrong.");
+            error("Помилка.");
         }
     };
 
@@ -103,10 +103,8 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
                             </Button>
                         </a>
                         <section style={{ margin: '35px 0 0 0' }} id="section1">
-                            <midi-visualizer type="staff" src={harmonizedMidiUrl}></midi-visualizer>
-                            {harmonizedMidiUrl && (
-                                <MidiPlayer harmonizedMidiUrl={harmonizedMidiUrl} />
-                            )}
+                            <midi-visualizer type="staff" src='https://cdn.jsdelivr.net/gh/cifkao/html-midi-player@2b12128/twinkle_twinkle.mid'></midi-visualizer>
+                            <MidiPlayer harmonizedMidiUrl={harmonizedMidiUrl} />
                         </section>
                     </div>
                 )}

@@ -9,6 +9,7 @@ import tensorflow as tf
 from common.constants import INSTRUMENT_NAMES, SEQ_LENGTH, PITCH_VOCAB_SIZE
 from dto.request.lstm_dto import GenerateRequest
 from generation.loss_functions import diversity_loss, percentile_loss
+from dto.response.generate_response import GenerateResponse
 from utils.midi_utils_v1 import notes_to_midi
 from generation.lstm_generator import predict_next_note
 from utils.logger import setup_logger
@@ -40,6 +41,7 @@ def generate_melody(start_notes, num_predictions, temperature, tempo):
 
     # Save original pitch information for later transposition
     original_pitches = start_notes_array[:, 0].copy()
+    logger.info(f"Original pitches: {original_pitches}")
     original_avg_pitch = np.mean(original_pitches)
     
     # Apply Context Bridging: Create a smooth transition to model's preferred range
@@ -117,4 +119,4 @@ def generate_melody(start_notes, num_predictions, temperature, tempo):
 @router.post("/generate")
 def generate_music(request: GenerateRequest):
     midi_file = generate_melody(request.start_notes, request.num_predictions, request.temperature, request.tempo)
-    return {"message": "LSTM мелодія згенерована", "midi_file": midi_file}
+    return GenerateResponse(message="Мелодія згенерована успішно", midi_file=midi_file). model_dump()

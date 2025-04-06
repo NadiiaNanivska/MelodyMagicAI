@@ -28,3 +28,5 @@ ROUND_PRECISION = 4
 SEQ_LENGTH = 50
 PITCH_VOCAB_SIZE = 128
 DURATION_VOCAB_SIZE = len(valid_durations)
+
+FILE_NOT_FOUND = "Файл не знайдено"
