@@ -139,13 +139,13 @@ class MelodyGenerator:
 
                 normalized_pitch = pitch / PITCH_VOCAB_SIZE
                 next_input_note = np.array([normalized_pitch, step, duration])
-                generated_notes.append((int(pitch), float(step), duration_in_seconds, float(start), float(end)))
+                generated_notes.append((int(pitch), float(step), duration_label, duration_in_seconds, float(start), float(end)))
 
                 input_notes = np.delete(input_notes, 0, axis=0)
                 input_notes = np.append(input_notes, np.expand_dims(next_input_note, 0), axis=0)
                 prev_start = start
 
-            notes_df = pd.DataFrame(generated_notes, columns=['pitch', 'step', 'duration', 'start', 'end'])
+            notes_df = pd.DataFrame(generated_notes, columns=['pitch', 'step', 'duration_label', 'duration', 'start', 'end'])
             logger.info(f"Generated notes as table:\n{notes_df}")
 
             # Транспозиція згенерованих нот у діапазон вхідної послідовності

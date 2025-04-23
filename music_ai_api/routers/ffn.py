@@ -23,7 +23,7 @@ device = torch.device("cuda" if use_cuda else "cpu")
 midi_file_path = 'uploaded_midis'
 
 network = ForwardNetwork().to(device)
-network.load_state_dict(torch.load('models/best_model.pth', map_location=device))
+network.load_state_dict(torch.load('models/best_model_new.pth', map_location=device))
 network.eval()
 
 @router.get("/harmonize/{filename}")
