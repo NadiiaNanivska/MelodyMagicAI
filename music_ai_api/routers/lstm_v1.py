@@ -119,4 +119,4 @@ def generate_melody(start_notes, num_predictions, temperature, tempo):
 @router.post("/generate")
 def generate_music(request: GenerateRequest):
     midi_file = generate_melody(request.start_notes, request.num_predictions, request.temperature, request.tempo)
-    return GenerateResponse(message="Мелодія згенерована успішно", midi_file=midi_file). model_dump()
+    return GenerateResponse(message="Мелодію успішно згенеровано", midi_file=midi_file).model_dump()

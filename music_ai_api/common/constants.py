@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from music21 import duration
 
 all_durations = duration.typeFromNumDict
@@ -7,16 +8,6 @@ valid_durations = {
     for value, name in all_durations.items()
     if name not in excluded_durations
 }
-
-# valid_durations = {
-#     4: "whole",
-#     2: "half",
-#     1: "quarter",
-#     0.5: "eighth",
-#     0.25: "16th",
-#     0.125: "32nd",
-#     0.0625: "64th",
-# }
 
 INSTRUMENT_NAMES = {
     0: "Acoustic Grand Piano",
@@ -30,3 +21,5 @@ PITCH_VOCAB_SIZE = 128
 DURATION_VOCAB_SIZE = len(valid_durations)
 
 FILE_NOT_FOUND = "Файл не знайдено"
+
+EXECUTOR = ThreadPoolExecutor(max_workers=5)

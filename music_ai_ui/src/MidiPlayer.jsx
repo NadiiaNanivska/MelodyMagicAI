@@ -1,7 +1,7 @@
 import React from 'react';
 import 'html-midi-player';
 
-const MidiPlayer = ({ harmonizedMidiUrl }) => {
+const MidiPlayerInner = ({ harmonizedMidiUrl }) => {
     console.log(harmonizedMidiUrl)
     return (
         <midi-player
@@ -9,5 +9,11 @@ const MidiPlayer = ({ harmonizedMidiUrl }) => {
             sound-font></midi-player>
     );
 };
+
+const MidiPlayer = React.memo(({ harmonizedMidiUrl }) => {
+    return (
+            <MidiPlayerInner harmonizedMidiUrl={harmonizedMidiUrl} />
+    );
+});
 
 export default MidiPlayer;

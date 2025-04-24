@@ -1,8 +1,8 @@
+import asyncio
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
-from pretty_midi import pretty_midi
 import numpy as np
 import pandas as pd
 from sklearn.calibration import LabelEncoder
@@ -18,7 +18,7 @@ from utils.midi_utils_v2 import (
     notes_to_midi_categorical
 )
 from generation.lstm_generator import predict_next_note_categorical
-from common.constants import INSTRUMENT_NAMES, SEQ_LENGTH, PITCH_VOCAB_SIZE
+from common.constants import INSTRUMENT_NAMES, SEQ_LENGTH, PITCH_VOCAB_SIZE, EXECUTOR
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -176,31 +176,42 @@ class MelodyGenerator:
         tempo: int,
         out_file: str
     ) -> None:
-        """Зберігає згенеровані ноти у MIDI файл."""
-        instrument_name = INSTRUMENT_NAMES.get(0, "Unknown Instrument")
-        
-        notes_to_midi_categorical(
-            notes_df,
-            out_file='generated_midis/' + out_file,
-            instrument_name=instrument_name,
-            bpm=tempo
-        )
+        """Зберігає згенеровані ноти у MIDI-файл."""
+        logger.info(f"Початок збереження MIDI-файлу: {out_file}")
+        try:
+            instrument_name = INSTRUMENT_NAMES.get(0, "Unknown Instrument")
+            notes_to_midi_categorical(
+                notes_df,
+                out_file='generated_midis/' + out_file,
+                instrument_name=instrument_name,
+                bpm=tempo
+            )
+            logger.info(f"MIDI-файл успішно збережено: {out_file}")
+        except Exception as e:
+            logger.error(f"Помилка при збереженні MIDI-файлу {out_file}: {str(e)}")
+            raise
 
 # Ініціалізація генератора мелодій
 melody_generator = MelodyGenerator('models/ckpt_best.model_lstm_attention_categorical.keras')
 
 @router.post("/generate")
 async def generate_music(request: GenerateRequest) -> dict:
+    logger.info(f"Отримано запит на генерацію музики: tempo={request.tempo}, "
+                f"num_predictions={request.num_predictions}, "
+                f"temperature={request.temperature}")
     try:
-        midi_file = melody_generator.generate_melody(
+        midi_file = await asyncio.get_event_loop().run_in_executor(
+            EXECUTOR, 
+            melody_generator.generate_melody, 
             request.start_notes,
             request.num_predictions,
             request.temperature,
             request.tempo
         )
-        return GenerateResponse(message="Мелодія згенерована успішно", midi_file=midi_file). model_dump()
+        logger.info(f"Мелодію успішно згенеровано: {midi_file}")
+        return GenerateResponse(message="Мелодія згенерована успішно", midi_file=midi_file).model_dump()
     except Exception as e:
-        logger.error(f"Music generation failed: {e}")
+        logger.error(f"Помилка при генерації музики: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=str(e)

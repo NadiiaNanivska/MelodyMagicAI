@@ -58,7 +58,6 @@ const SoundfontProvider = ({
 
       const endTime = Date.now();
       const duration = endTime - noteDurations[midiNumber].startTime;
-      console.log(`Note ${midiNumber} duration: ${duration}ms`);
 
       onNoteSelect({
         pitch: midiNumber,
