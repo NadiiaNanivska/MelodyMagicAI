@@ -1,5 +1,5 @@
 import asyncio
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, File, HTTPException, UploadFile
 import torch
 import os
 from datetime import datetime
@@ -28,14 +28,17 @@ network = ForwardNetwork().to(device)
 network.load_state_dict(torch.load('models/best_model_new.pth', map_location=device))
 network.eval()
 
-@router.get("/harmonize/{filename}")
-async def harmonize_midi(filename: str):
-    logger.info(f"Розпочато обробку запиту на гармонізацію файлу: {filename}")
+@router.post("/harmonize")
+async def harmonize_midi(file: UploadFile = File(...)):
+    logger.info(f"Розпочато обробку запиту на гармонізацію файлу: {file.filename}")
     try:
+        if not file.filename.endswith(".mid"):
+            logger.warning(f"Спроба завантажити файл з неправильним розширенням: {file.filename}")
+            raise HTTPException(status_code=400, detail="Дозволені лише MIDI-файли")
         output_filename = await asyncio.get_event_loop().run_in_executor(
             EXECUTOR, 
             harmonize_melody, 
-            filename
+            file
         )
         logger.info(f"Гармонізація мелодії успішно завершена. Вихідний файл: {output_filename}")
         return GenerateResponse(message="Мелодію успішно гармонізовано", midi_file=output_filename).model_dump()
@@ -47,15 +50,11 @@ async def harmonize_midi(filename: str):
         logger.error(error_msg)
         raise HTTPException(status_code=500, detail=error_msg)
 
-def harmonize_melody(filename):
-    file_path = os.path.join(midi_file_path, filename)
-    if not os.path.exists(file_path):
-        logger.error(f"Файл не знайдено: {file_path}")
-        raise HTTPException(status_code=404, detail="MIDI-файл не знайдено")
-        
-    logger.info(f'Ініціалізація генерації гармонії для {filename}')
+def harmonize_melody(file: UploadFile = File(...)):
+      
+    logger.info(f'Ініціалізація генерації гармонії для {file.filename}')
     harmony_generator = NetworkHarmonyGenerator(network)
-    _, val_dataset = load_custom_midi_data(midi_file_path)
+    _, val_dataset = load_custom_midi_data(file)
     (x_soprano_sample, _, _, _) = val_dataset[:constants.BATCH_SIZE]
         
     logger.info('Генерація гармонії...')

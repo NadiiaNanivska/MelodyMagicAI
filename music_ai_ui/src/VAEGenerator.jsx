@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Select, message, Upload, Row, Col, List } from 'antd';
+import React, { useState, useEffect, useRef } from 'react';
+import { Button, Select, message, Upload, Row, Col, List, Modal } from 'antd';
 import 'html-midi-player';
 import * as mm from '@magenta/music';
+import { UploadOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
 
-const VAEGenerator = ({ uploadedMidiRef }) => {
+const VAEGenerator = () => {
     const [messageApi, contextHolder] = message.useMessage();
+    const uploadedMidiRef = useRef(null);
+    const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
     const key = 'updatable';
     const warning = (content) => messageApi.open({ key, type: 'warning', content });
     const success = (content) => messageApi.open({ key, type: 'success', content });
@@ -50,16 +53,12 @@ const VAEGenerator = ({ uploadedMidiRef }) => {
                 console.log('Генерація варіацій за допомогою завантаженого файлу...');
                 const quantizedSequence = mm.sequences.quantizeNoteSequence(uploadedMidiRef.current, 4); // Квантуємо
                 // sequence = await musicVAE.interpolate([quantizedSequence, quantizedSequence], 1);
-
                 sequence = await musicVAE.similar(quantizedSequence, 1, 0.5);
 
                 console.log(sequence);
             } else {
                 console.log('Генерація випадкової музики...');
-
-                // Генерація випадкової музики з умовою стилю
-                const condition = getConditionForStyle(style);
-                sequence = await musicVAE.sample(1);  // Генерація випадкової музики з умовами
+                sequence = await musicVAE.sample(1);  
             }
 
             setGeneratedSequence(sequence[0]);
@@ -69,21 +68,34 @@ const VAEGenerator = ({ uploadedMidiRef }) => {
         }
     };
 
-    const getConditionForStyle = (style) => {
-        // Визначаємо параметр стилю як умовний тег
-        switch (style) {
-            case 'classical':
-                return { style: 0 };  // Умовне значення для класичної музики
-            case 'jazz':
-                return { style: 1 };  // Умовне значення для джазу
-            case 'pop':
-                return { style: 2 };  // Умовне значення для поп-музики
-            case 'rock':
-                return { style: 3 };  // Умовне значення для року
-            default:
-                return { style: 0 };  // Стандартний стиль
-        }
+    const handleUpload = (info) => {
+    const file = info.file;
+    if (!file.name.endsWith(".mid") && !file.name.endsWith(".midi")) {
+      error("Завантажте валідний аудіофайл");
+      return false;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      uploadedMidiRef.current = e.target.result;
+      success("Аудіофайл успішно додано");
     };
+    reader.readAsArrayBuffer(file);
+
+    return false;
+  };
+
+  const showUploadModal = () => {
+    setIsUploadModalVisible(true);
+  };
+
+  const handleUploadOk = () => {
+    setIsUploadModalVisible(false);
+  };
+
+  const handleUploadCancel = () => {
+    setIsUploadModalVisible(false);
+  };
 
     const playVariation = async () => {
         if (!generatedSequence) {
@@ -158,19 +170,19 @@ const VAEGenerator = ({ uploadedMidiRef }) => {
                 {/* Перший стовпець: Генерація варіацій */}
                 <Col span={12}>
                     <h3>Генерація варіацій</h3>
-                    {/* <div style={{ marginBottom: '20px' }}>
-                        <Select value={style} onChange={setStyle} style={{ width: 200, marginRight: 20 }}>
-                            <Option value="classical">Класика</Option>
-                            <Option value="jazz">Джаз</Option>
-                            <Option value="pop">Рок</Option>
-                            <Option value="rock">Rock</Option>
-                        </Select>
-                    </div> */}
+                    <Modal title="Завантажити аудіофайл" visible={isUploadModalVisible} onOk={handleUploadOk} onCancel={handleUploadCancel} cancelText="Скасувати">
+                          <Upload customRequest={handleUpload} showUploadList={true} accept=".mid, .midi, .wav">
+                            <Button icon={<UploadOutlined />}>Натисніть, щоб завантажити аудіо</Button>
+                          </Upload>
+                        </Modal>
                     <Button type="primary" onClick={generateVariations} style={{ marginRight: 10 }}>
                         Згенерувати мелодію
                     </Button>
                     <Button type="dashed" onClick={playVariation}>
                         Відтворити мелодію
+                    </Button>
+                    <Button style={{ marginLeft: 10 }} onClick={showUploadModal}>
+                        Додати MIDI-файл
                     </Button>
                 </Col>
 

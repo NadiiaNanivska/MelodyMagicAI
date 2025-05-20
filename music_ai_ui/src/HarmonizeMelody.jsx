@@ -1,15 +1,18 @@
-import React, { useState } from "react";
-import { Button, message } from "antd";
+import React, { useState, useRef } from "react";
+import { Button, message, Modal, Upload } from "antd";
+import { UploadOutlined} from '@ant-design/icons';
 import MidiPlayer from "./MidiPlayer";
 import 'html-midi-player';
 
 const base_server_url = "http://127.0.0.1:8000/api";
 
-const HarmonizeMelody = ({ uploadedMidiRef }) => {
+const HarmonizeMelody = () => {
     const [messageApi, contextHolder] = message.useMessage();
     const key = 'updatable';
     const [harmonizedMidiUrl, setHarmonizedMidiUrl] = useState(null);
-
+    const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
+    const uploadedMidiRef = useRef(null);
+    const warning = (content) => messageApi.open({ key, type: 'warning', content });
     const error = (content) => messageApi.open({ key, type: 'error', content });
     const success = (content) => messageApi.open({ key, type: 'success', content, duration: 2 });
     const loading = (content = 'Гармонізація...') => {
@@ -22,13 +25,6 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
     };
 
     const harmonizeMelody = async () => {
-        if (!uploadedMidiRef.current) {
-            error("Жоден MIDI файл не завантажено!");
-            return;
-        }
-
-        console.log("Uploading MIDI file...");
-
         const formData = new FormData();
         formData.append(
             "file",
@@ -37,25 +33,10 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
         );
 
         try {
-            loading("Завантаження MIDI файлу...");
-            const uploadResponse = await fetch(`${base_server_url}/upload_midi`, {
+            loading("Гармонізація мелодії...");
+            const harmonizeResponse = await fetch(`${base_server_url}/ffn/harmonize`, {
                 method: "POST",
                 body: formData,
-            });
-
-            if (!uploadResponse.ok) {
-                error("Не вдалось завантажити MIDI файл.");
-                return;
-            }
-
-            const { midi_file: uploaded_midi_file } = await uploadResponse.json();
-            success("Файл завантажено успішно!");
-
-            console.log("Uploaded MIDI filename:", uploaded_midi_file);
-
-            loading("Гармонізація мелодії...");
-            const harmonizeResponse = await fetch(`${base_server_url}/ffn/harmonize/${uploaded_midi_file}`, {
-                method: "GET",
             });
 
             if (!harmonizeResponse.ok) {
@@ -77,10 +58,49 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
         }
     };
 
+    const handleUpload = (info) => {
+    const file = info.file;
+    if (!file.name.endsWith(".mid") && !file.name.endsWith(".midi")) {
+      error("Завантажте валідний аудіофайл");
+      return false;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      uploadedMidiRef.current = e.target.result;
+      success("Аудіофайл успішно додано");
+    };
+    reader.readAsArrayBuffer(file);
+
+    return false;
+  };
+
+  const showUploadModal = () => {
+    setIsUploadModalVisible(true);
+  };
+
+  const handleUploadOk = () => {
+    setIsUploadModalVisible(false);
+    if (uploadedMidiRef.current) {
+      harmonizeMelody();
+    } else {
+      warning("Спочатку додайте файл для гармонізації");
+    }
+  };
+
+  const handleUploadCancel = () => {
+    setIsUploadModalVisible(false);
+  };
+
     return (
         <>
             {contextHolder}
             <div style={{ textAlign: "center", padding: "20px" }}>
+                <Modal title="Завантажити аудіофайл" visible={isUploadModalVisible} onOk={handleUploadOk} onCancel={handleUploadCancel} cancelText="Скасувати">
+                          <Upload customRequest={handleUpload} showUploadList={true} accept=".mid, .midi, .wav">
+                            <Button icon={<UploadOutlined />}>Натисніть, щоб завантажити аудіо</Button>
+                          </Upload>
+                        </Modal>
                 <h2>Гармонізація</h2>
 
                 {uploadedMidiRef.current ? (
@@ -90,7 +110,7 @@ const HarmonizeMelody = ({ uploadedMidiRef }) => {
                 )}
 
                 <div style={{ marginTop: 20 }}>
-                    <Button type="primary" onClick={harmonizeMelody}>
+                    <Button type="primary" onClick={showUploadModal}>
                         Гармонізувати
                     </Button>
                 </div>

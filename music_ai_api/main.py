@@ -16,10 +16,6 @@ logger = setup_logger(__name__)
 TEMP_DIR = "./generated_midis"
 Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
-UPLOAD_FOLDER = "./uploaded_midis"
-Path(UPLOAD_FOLDER).mkdir(parents=True, exist_ok=True)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await asyncio.to_thread(clean_old_files)
@@ -60,23 +56,6 @@ app.add_middleware(
 )
 
 apirouter = APIRouter()
-
-@apirouter.post("/upload_midi")
-async def upload_midi(file: UploadFile = File(...)):
-    logger.info(f"Запит на завантаження файлу {file.filename}")
-    try:
-        if not file.filename.endswith(".mid"):
-            logger.warning(f"Спроба завантажити файл з неправильним розширенням: {file.filename}")
-            raise HTTPException(status_code=400, detail="Дозволені лише MIDI-файли")
-        
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
-        logger.info(f"Файл {file.filename} успішно завантажено")
-        return GenerateResponse(message="Файл успішно завантажено", midi_file=file.filename).model_dump()
-    except Exception as e:
-        logger.error(f"Помилка при завантаженні файлу {file.filename}: {str(e)}")
-        raise
 
 @apirouter.get("/download/{filename}")
 async def download_midi(filename: str, background_tasks: BackgroundTasks):

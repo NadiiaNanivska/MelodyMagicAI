@@ -10,52 +10,17 @@ const { Title } = Typography;
 
 const App = () => {
   const [activeKey, setActiveKey] = useState("1");
-  const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
   const currentPageRef = useRef(null);
-  const uploadedMidiRef = useRef(null);
   const [messageApi, contextHolder] = message.useMessage();
-  const key = 'updatable';
-  const error = (content) => messageApi.open({ key, type: 'error', content });
-  const warning = (content) => messageApi.open({ key, type: 'warning', content });
-  const success = (content) => messageApi.open({ key, type: 'success', content });
-
-  const handleUpload = (info) => {
-    const file = info.file;
-    if (!file.name.endsWith(".mid") && !file.name.endsWith(".midi")) {
-      error("Завантажте валідний аудіофайл");
-      return false;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      uploadedMidiRef.current = e.target.result;
-      success("Аудіофайл успішно додано");
-    };
-    reader.readAsArrayBuffer(file);
-
-    return false;
-  };
-
-  const showUploadModal = () => {
-    setIsUploadModalVisible(true);
-  };
-
-  const handleUploadOk = () => {
-    setIsUploadModalVisible(false);
-  };
-
-  const handleUploadCancel = () => {
-    setIsUploadModalVisible(false);
-  };
 
   const renderContent = () => {
     switch (activeKey) {
       case "1":
-        currentPageRef.current = <MelodyGenerator uploadedMidiRef={uploadedMidiRef} />;
-        return <MelodyGenerator uploadedMidiRef={uploadedMidiRef} />;
+        currentPageRef.current = <MelodyGenerator />;
+        return <MelodyGenerator />;
       case "2":
-        currentPageRef.current = <HarmonizeMelody uploadedMidiRef={uploadedMidiRef} />;
-        return <HarmonizeMelody uploadedMidiRef={uploadedMidiRef} />;
+        currentPageRef.current = <HarmonizeMelody />;
+        return <HarmonizeMelody />;
       default:
         return currentPageRef.current;
     }
@@ -76,9 +41,6 @@ const App = () => {
             <Menu.Item key="2" icon={<EditOutlined />}>
               Гармонізація мелодії
             </Menu.Item>
-            <Menu.Item key="3" icon={<UploadOutlined />} onClick={showUploadModal}>
-              Завантажити аудіофайл
-            </Menu.Item>
           </Menu>
         </Sider>
 
@@ -93,12 +55,6 @@ const App = () => {
             {renderContent()}
           </Content>
         </Layout>
-
-        <Modal title="Завантажити аудіофайл" visible={isUploadModalVisible} onOk={handleUploadOk} onCancel={handleUploadCancel} cancelText="Скасувати">
-          <Upload customRequest={handleUpload} showUploadList={true} accept=".mid, .midi, .wav">
-            <Button icon={<UploadOutlined />}>Натисніть, щоб завантажити аудіо</Button>
-          </Upload>
-        </Modal>
       </Layout>
     </>
   );

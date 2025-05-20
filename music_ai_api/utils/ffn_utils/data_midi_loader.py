@@ -5,16 +5,18 @@ from utils.ffn_models.chorales_dataset import ChoralesDataset
 import os
 import numpy as np
 from utils.logger import setup_logger
+import tempfile
+import shutil
 
 logger = setup_logger(__name__)
 
 
-def load_custom_midi_data(midi_files_dir, test_size=0.2, random_seed=42):
+def load_custom_midi_data(file, test_size=0.2, random_seed=42):
     """
-    Завантажує дані з директорії з MIDI-файлами і формує датасет.
+    Завантажує дані з одного MIDI-файлу (UploadFile), дублює його до 4 файлів і формує датасет.
     
     Args:
-        midi_files_dir (str): Шлях до директорії з MIDI-файлами.
+        file (UploadFile): MIDI-файл, отриманий через HTTP-запит.
         test_size (float): Частка тестових даних.
         random_seed (int): Зерно для випадкового розподілу.
         
@@ -23,50 +25,45 @@ def load_custom_midi_data(midi_files_dir, test_size=0.2, random_seed=42):
     """
     # Створення структури даних для пісень
     sequence_data = {'soprano': [], 'alto': [], 'tenor': [], 'bass': []}
-    
-    # Отримуємо список файлів у директорії
-    midi_files = [f for f in os.listdir(midi_files_dir) if f.endswith('.mid') or f.endswith('.midi')]
-    
-    # Перевірка, чи є достатньо файлів
-    if len(midi_files) < 4:
-        logger.info(f"Увага: знайдено лише {len(midi_files)} MIDI-файлів, а потрібно мінімум 4.")
-        logger.info("Будемо використовувати доступні файли і дублювати їх, якщо потрібно.")
-        
-        # Якщо файлів менше 4, дублюємо наявні файли
-        while len(midi_files) < 4:
-            midi_files.append(midi_files[0])  # Дублюємо перший файл
-    
-    # Відбираємо перші 4 файли
-    midi_files = midi_files[:4]
-    logger.info(f"Використовуємо файли: {midi_files}")
-    
-    # Зберігаємо дані MIDI для повернення
-    midi_data_all = []
-    
-    # Обробляємо кожен MIDI-файл
-    for idx, midi_file in enumerate(midi_files):
-        midi_file_path = os.path.join(midi_files_dir, midi_file)
-        logger.info(f"Обробка файлу {idx+1}/4: {midi_file}")
-        
-        # Завантаження MIDI-файлу
-        midi_data = analyze_simultaneous_pitches(midi_file_path)
-        midi_data_all.append(midi_data)
-        
-        # Уявимо, що кожен MIDI-файл містить одну пісню
-        song = midi_data
-        
-        # Для кожного голосу, отримуємо one-hot кодування та розбиваємо на послідовності
-        for voice in voices.values():
-            one_hot_encoding = get_to_one_hot_encoding(song, voice)
-            sequences_split = split_into_sequences(one_hot_encoding)
-            
-            # Додаємо послідовності в дані
-            sequence_data[voice.name] += sequences_split
-    
-    return (
-        midi_data_all,
-        ChoralesDataset(sequence_data)
-    )
+
+    # Створюємо тимчасову директорію для файлів
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # Зберігаємо отриманий файл у тимчасову директорію
+        base_filename = os.path.splitext(file.filename)[0]
+        midi_filenames = []
+        for i in range(4):
+            midi_filename = f"{base_filename}_copy{i+1}.mid"
+            midi_path = os.path.join(tmpdirname, midi_filename)
+            logger.info(f"Зберігаємо файл {midi_filename} у {tmpdirname}")
+            file.file.seek(0)
+            with open(midi_path, "wb") as out_f:
+                shutil.copyfileobj(file.file, out_f)
+            midi_filenames.append(midi_filename)
+        # Після запису файлу file.file потрібно повернутися на початок для подальших читань
+        file.file.seek(0)
+
+        logger.info(f"Використовуємо файли: {midi_filenames}")
+
+        midi_data_all = []
+
+        for idx, midi_file in enumerate(midi_filenames):
+            midi_file_path = os.path.join(tmpdirname, midi_file)
+            logger.info(f"Обробка файлу {idx+1}/4: {midi_file}")
+
+            midi_data = analyze_simultaneous_pitches(midi_file_path)
+            midi_data_all.append(midi_data)
+
+            song = midi_data
+
+            for voice in voices.values():
+                one_hot_encoding = get_to_one_hot_encoding(song, voice)
+                sequences_split = split_into_sequences(one_hot_encoding)
+                sequence_data[voice.name] += sequences_split
+
+        return (
+            midi_data_all,
+            ChoralesDataset(sequence_data)
+        )
 
 
 from mido import MidiFile

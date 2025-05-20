@@ -6,7 +6,7 @@ import VAEGenerator from './VAEGenerator';
 const { TabPane } = Tabs;
 const { Content } = Layout;
 
-const MelodyGenerator = ({ uploadedMidiRef }) => {
+const MelodyGenerator = () => {
     return (
         <Layout style={{ minHeight: '100%', minWidth: '100%' }}>
             <Content style={{ textAlign: 'center' }}>
@@ -15,7 +15,7 @@ const MelodyGenerator = ({ uploadedMidiRef }) => {
                         <LSTMGenerator />
                     </TabPane>
                     <TabPane tab="VAE" key="vae">
-                        <VAEGenerator uploadedMidiRef={uploadedMidiRef} />
+                        <VAEGenerator />
                     </TabPane>
                 </Tabs>
             </Content>
