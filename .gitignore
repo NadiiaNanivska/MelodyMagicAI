@@ -6,3 +6,6 @@
 **/*.midi
 
 .vscode
+
+.env
+venv

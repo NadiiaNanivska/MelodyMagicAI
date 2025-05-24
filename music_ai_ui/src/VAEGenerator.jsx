@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Select, message, Upload, Row, Col, List, Modal } from 'antd';
+import { Button, message, Upload, Row, Col, List, Modal } from 'antd';
 import 'html-midi-player';
 import * as mm from '@magenta/music';
 import { UploadOutlined } from '@ant-design/icons';
 
-const { Option } = Select;
 
 const VAEGenerator = () => {
     const [messageApi, contextHolder] = message.useMessage();
@@ -15,7 +14,6 @@ const VAEGenerator = () => {
     const success = (content) => messageApi.open({ key, type: 'success', content });
     const loading = (content) => messageApi.open({ key, type: 'loading', content, duration: 0 });
 
-    const [style, setStyle] = useState('classical');
     const [musicVAE, setMusicVAE] = useState(null);
     const [generatedSequence, setGeneratedSequence] = useState(null);
     const [melodyStart, setMelodyStart] = useState(null);
@@ -51,16 +49,13 @@ const VAEGenerator = () => {
             // Якщо melodyStart є (завантажено початкову мелодію), використовуємо її для генерації варіацій
             if (uploadedMidiRef.current) {
                 console.log('Генерація варіацій за допомогою завантаженого файлу...');
-                const quantizedSequence = mm.sequences.quantizeNoteSequence(uploadedMidiRef.current, 4); // Квантуємо
+                const quantizedSequence = mm.sequences.quantizeNoteSequence(uploadedMidiRef.current, 4);
                 // sequence = await musicVAE.interpolate([quantizedSequence, quantizedSequence], 1);
                 sequence = await musicVAE.similar(quantizedSequence, 1, 0.5);
-
-                console.log(sequence);
             } else {
                 console.log('Генерація випадкової музики...');
-                sequence = await musicVAE.sample(1);  
+                sequence = await musicVAE.sample(1);
             }
-
             setGeneratedSequence(sequence[0]);
             success('Варіації згенеровано!');
         } catch (error) {
@@ -69,33 +64,33 @@ const VAEGenerator = () => {
     };
 
     const handleUpload = (info) => {
-    const file = info.file;
-    if (!file.name.endsWith(".mid") && !file.name.endsWith(".midi")) {
-      error("Завантажте валідний аудіофайл");
-      return false;
-    }
+        const file = info.file;
+        if (!file.name.endsWith(".mid") && !file.name.endsWith(".midi")) {
+            error("Завантажте валідний аудіофайл");
+            return false;
+        }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      uploadedMidiRef.current = e.target.result;
-      success("Аудіофайл успішно додано");
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            uploadedMidiRef.current = e.target.result;
+            success("Аудіофайл успішно додано");
+        };
+        reader.readAsArrayBuffer(file);
+
+        return false;
     };
-    reader.readAsArrayBuffer(file);
 
-    return false;
-  };
+    const showUploadModal = () => {
+        setIsUploadModalVisible(true);
+    };
 
-  const showUploadModal = () => {
-    setIsUploadModalVisible(true);
-  };
+    const handleUploadOk = () => {
+        setIsUploadModalVisible(false);
+    };
 
-  const handleUploadOk = () => {
-    setIsUploadModalVisible(false);
-  };
-
-  const handleUploadCancel = () => {
-    setIsUploadModalVisible(false);
-  };
+    const handleUploadCancel = () => {
+        setIsUploadModalVisible(false);
+    };
 
     const playVariation = async () => {
         if (!generatedSequence) {
@@ -104,7 +99,6 @@ const VAEGenerator = () => {
         }
 
         try {
-            console.log("Відтворення: ", generatedSequence)
             const player = new mm.Player();
             player.start(generatedSequence);
             success('Відтворення варіації! 🎶');
@@ -138,7 +132,6 @@ const VAEGenerator = () => {
 
         try {
             loading('Інтерполяція між двома мелодіями...');
-            console.log('Інтерполяція між двома мелодіями...');
             const interpolated = await musicVAE.interpolate([melodyStart, melodyEnd], 5);
             setInterpolatedMelodies(interpolated);
             success('Мелодії інтерпольовано! 🎼');
@@ -167,14 +160,13 @@ const VAEGenerator = () => {
         <>
             {contextHolder}
             <Row gutter={16}>
-                {/* Перший стовпець: Генерація варіацій */}
                 <Col span={12}>
                     <h3>Генерація варіацій</h3>
                     <Modal title="Завантажити аудіофайл" visible={isUploadModalVisible} onOk={handleUploadOk} onCancel={handleUploadCancel} cancelText="Скасувати">
-                          <Upload customRequest={handleUpload} showUploadList={true} accept=".mid, .midi, .wav">
+                        <Upload customRequest={handleUpload} showUploadList={true} accept=".mid, .midi, .wav">
                             <Button icon={<UploadOutlined />}>Натисніть, щоб завантажити аудіо</Button>
-                          </Upload>
-                        </Modal>
+                        </Upload>
+                    </Modal>
                     <Button type="primary" onClick={generateVariations} style={{ marginRight: 10 }}>
                         Згенерувати мелодію
                     </Button>
@@ -185,8 +177,6 @@ const VAEGenerator = () => {
                         Додати MIDI-файл
                     </Button>
                 </Col>
-
-                {/* Другий стовпець: Інтерполяція мелодій */}
                 <Col span={12}>
                     <h3>Інтерполяція мелодій</h3>
                     <div style={{ marginBottom: '20px' }}>
@@ -202,7 +192,6 @@ const VAEGenerator = () => {
                     </Button>
                 </Col>
             </Row>
-
             <Row style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column' }}>
                 <div style={{ marginTop: '20px' }}>
                     <section style={{ margin: '35px 0 0 0' }} id="section1">

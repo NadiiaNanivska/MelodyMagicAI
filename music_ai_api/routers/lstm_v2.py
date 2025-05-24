@@ -162,7 +162,7 @@ class MelodyGenerator:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             out_file = f'output_{timestamp}.mid'
             
-            self._save_midi(notes_df, tempo, out_file)
+            midi_url = self._save_midi(notes_df, tempo, out_file)
             logger.info(f"Generated melody saved to {out_file}")
             return out_file
             
@@ -180,13 +180,14 @@ class MelodyGenerator:
         logger.info(f"Початок збереження MIDI-файлу: {out_file}")
         try:
             instrument_name = INSTRUMENT_NAMES.get(0, "Unknown Instrument")
-            notes_to_midi_categorical(
+            midi_url = notes_to_midi_categorical(
                 notes_df,
                 out_file='generated_midis/' + out_file,
                 instrument_name=instrument_name,
                 bpm=tempo
             )
             logger.info(f"MIDI-файл успішно збережено: {out_file}")
+            return midi_url
         except Exception as e:
             logger.error(f"Помилка при збереженні MIDI-файлу {out_file}: {str(e)}")
             raise
