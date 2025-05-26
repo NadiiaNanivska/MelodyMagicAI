@@ -13,9 +13,6 @@ def predict_next_note(
   inputs = tf.expand_dims(notes, 0)
 
   predictions = model.predict(inputs)
-  # pitch_logits = predictions[0]
-  # step = predictions[1]
-  # duration = predictions[2]
   pitch_logits = predictions['pitch']
   step = predictions['step']
   duration = predictions['duration']

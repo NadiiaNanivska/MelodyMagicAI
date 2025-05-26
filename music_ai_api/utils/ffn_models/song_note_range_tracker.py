@@ -14,7 +14,6 @@ class SongNoteRangeTracker:
 
         return int(note)
 
-    # Note: Could use a better technique, but since we only do a forward pass, this is the least problematic resolution.
     def get_first_note_missing_in_tuple(self, song_segment):
         notes_in_segment = len(song_segment)
         tuple_index_delta = 4 - notes_in_segment

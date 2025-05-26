@@ -53,11 +53,6 @@ def notes_to_midi_categorical(
     active_notes = []
 
     for i, note in notes.iterrows():
-        # duration_in_seconds = convert_duration_to_seconds(note['duration'], bpm)
-        # start = float(prev_start + note['step'])
-        # end = float(start + duration_in_seconds)
-
-        # Remove notes that have ended
         active_notes = [n for n in active_notes if n.end > note['start']]
 
         if len(active_notes) < max_active_notes:
@@ -73,5 +68,4 @@ def notes_to_midi_categorical(
     pm.instruments.append(instrument)
     url = upload_image(pm=pm, out_file=out_file)
     logger.info(f"Завантажено MIDI файл на Cloudinary: {url}")
-    # pm.write(out_file)
     return url

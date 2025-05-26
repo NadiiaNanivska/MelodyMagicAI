@@ -43,10 +43,10 @@ class MelodyGenerator:
             )
             self.key_order = ['pitch', 'step', 'duration']
             self.label_encoder = self._init_label_encoder()
-            logger.info(f"Model loaded successfully from {model_path}")
+            logger.info(f"Модель успішно завантажено з {model_path}")
         except Exception as e:
-            logger.error(f"Failed to load model: {e}")
-            raise RuntimeError(f"Failed to initialize melody generator: {e}")
+            logger.error(f"Не вдалося завантажити модель: {e}")
+            raise RuntimeError(f"Не вдалося ініціалізувати генератор мелодій: {e}")
 
     def _init_label_encoder(self) -> LabelEncoder:
         """Ініціалізує LabelEncoder на тренувальних даних."""
@@ -57,8 +57,8 @@ class MelodyGenerator:
             label_encoder.fit(train_notes[:, 2])
             return label_encoder
         except Exception as e:
-            logger.error(f"Failed to initialize label encoder: {e}")
-            raise RuntimeError(f"Label encoder initialization failed: {e}")
+            logger.error(f"Не вдалося ініціалізувати label encoder: {e}")
+            raise RuntimeError(f"Не вдалося ініціалізувати label encoder: {e}")
 
     def _prepare_input_notes(
         self,
@@ -97,16 +97,13 @@ class MelodyGenerator:
             start_notes_array = self._prepare_input_notes(start_notes, note_durations)
 
             # Транспозиція в діапазон моделі
-            # Save original pitch information for later transposition
+            # Зберігаємо інформацію про початкові висоти нот для подальшої транспозиції
             original_pitches = start_notes_array[:, 0].copy()
             original_avg_pitch = np.mean(original_pitches)
-            # Apply Context Bridging: Create a smooth transition to model's preferred range
-            model_preferred_range = (50, 80)  # The range your model typically generates in
+            model_preferred_range = (50, 80)  # Діапазон, в якому зазвичай генерує модель
             target_avg_pitch = sum(model_preferred_range) / 2
-            # Create bridge between original pitches and target range
             bridge_length = min(8, SEQ_LENGTH // 2)
             for i in range(bridge_length):
-                # Gradually shift from seed to target range
                 ratio = (i + 1) / bridge_length
                 idx = SEQ_LENGTH - bridge_length + i
                 shifted_pitch = original_pitches[idx] * (1 - ratio) + target_avg_pitch * ratio
@@ -146,28 +143,25 @@ class MelodyGenerator:
                 prev_start = start
 
             notes_df = pd.DataFrame(generated_notes, columns=['pitch', 'step', 'duration_label', 'duration', 'start', 'end'])
-            logger.info(f"Generated notes as table:\n{notes_df}")
+            logger.debug(f"Згенеровані ноти у вигляді таблиці:\n{notes_df}")
 
             # Транспозиція згенерованих нот у діапазон вхідної послідовності
-            # Apply Transposition Post-Processing
-            # Calculate the pitch shift needed to match original pitch average
+            # Обчислюємо необхідний зсув висоти для відповідності початковій середній висоті
             generated_avg_pitch = notes_df['pitch'].mean()
             pitch_shift = int(round(original_avg_pitch - generated_avg_pitch))
-            # Apply transposition to the generated notes
             notes_df['pitch'] = notes_df['pitch'].apply(
                 lambda p: max(0, min(127, p + pitch_shift))
             )
-            logger.info(f"Generated notes after transposition:\n{notes_df}")
+            logger.debug(f"Згенеровані ноти після транспозиції:\n{notes_df}")
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             out_file = f'output_{timestamp}.mid'
             
-            midi_url = self._save_midi(notes_df, tempo, out_file)
-            logger.info(f"Generated melody saved to {out_file}")
+            self._save_midi(notes_df, tempo, out_file)
             return out_file
             
         except Exception as e:
-            logger.error(f"Melody generation failed: {e}")
+            logger.error(f"Не вдалося згенерувати мелодію: {e}")
             raise e
 
     def _save_midi(
@@ -180,26 +174,23 @@ class MelodyGenerator:
         logger.info(f"Початок збереження MIDI-файлу: {out_file}")
         try:
             instrument_name = INSTRUMENT_NAMES.get(0, "Unknown Instrument")
-            midi_url = notes_to_midi_categorical(
+            notes_to_midi_categorical(
                 notes_df,
                 out_file='generated_midis/' + out_file,
                 instrument_name=instrument_name,
                 bpm=tempo
             )
-            logger.info(f"MIDI-файл успішно збережено: {out_file}")
-            return midi_url
         except Exception as e:
             logger.error(f"Помилка при збереженні MIDI-файлу {out_file}: {str(e)}")
             raise
 
-# Ініціалізація генератора мелодій
 melody_generator = MelodyGenerator('models/ckpt_best.model_lstm_attention_categorical.keras')
 
 @router.post("/generate")
 async def generate_music(request: GenerateRequest) -> dict:
-    logger.info(f"Отримано запит на генерацію музики: tempo={request.tempo}, "
-                f"num_predictions={request.num_predictions}, "
-                f"temperature={request.temperature}")
+    logger.info(f"Отримано запит на генерацію музики: темп={request.tempo}, "
+                f"кількість нот={request.num_predictions}, "
+                f"температура={request.temperature}")
     try:
         midi_file = await asyncio.get_event_loop().run_in_executor(
             EXECUTOR, 

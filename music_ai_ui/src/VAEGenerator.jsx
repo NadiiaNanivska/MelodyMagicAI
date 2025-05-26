@@ -103,7 +103,7 @@ const VAEGenerator = () => {
             player.start(generatedSequence);
             success('Відтворення варіації! 🎶');
         } catch (error) {
-            warning(error.message);
+            warning('Сталася помилка при відтворенні варіації.');
         }
     };
 

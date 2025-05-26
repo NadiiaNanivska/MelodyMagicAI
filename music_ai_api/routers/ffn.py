@@ -22,15 +22,13 @@ router = APIRouter()
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
-midi_file_path = 'uploaded_midis'
-
 network = ForwardNetwork().to(device)
 network.load_state_dict(torch.load('models/best_model_new.pth', map_location=device))
 network.eval()
 
 @router.post("/harmonize")
 async def harmonize_midi(file: UploadFile = File(...)):
-    logger.info(f"Розпочато обробку запиту на гармонізацію файлу: {file.filename}")
+    logger.info(f"Запит на гармонізацію файлу: {file.filename}")
     try:
         if not file.filename.endswith(".mid"):
             logger.warning(f"Спроба завантажити файл з неправильним розширенням: {file.filename}")
@@ -40,7 +38,7 @@ async def harmonize_midi(file: UploadFile = File(...)):
             harmonize_melody, 
             file
         )
-        logger.info(f"Гармонізація мелодії успішно завершена. Вихідний файл: {output_filename}")
+        logger.info(f"Гармонізація завершена. Файл: {output_filename}")
         return GenerateResponse(message="Мелодію успішно гармонізовано", midi_file=output_filename).model_dump()
     
     except HTTPException as he:
@@ -51,13 +49,12 @@ async def harmonize_midi(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=error_msg)
 
 def harmonize_melody(file: UploadFile = File(...)):
-      
-    logger.info(f'Ініціалізація генерації гармонії для {file.filename}')
+    logger.debug(f'Ініціалізація генерації гармонії для {file.filename}')
     harmony_generator = NetworkHarmonyGenerator(network)
     _, val_dataset = load_custom_midi_data(file)
     (x_soprano_sample, _, _, _) = val_dataset[:constants.BATCH_SIZE]
         
-    logger.info('Генерація гармонії...')
+    logger.debug('Генерація гармонії...')
     generated_song = harmony_generator.generate_harmony(x_soprano_sample)
     generated_note_infos = note_generator.generate_note_info(generated_song)
         
@@ -65,6 +62,6 @@ def harmonize_melody(file: UploadFile = File(...)):
     output_filename = f'generated_file_{timestamp}.mid'
     output_path = os.path.join('generated_midis', output_filename)
         
-    logger.info(f'Збереження згенерованого MIDI файлу: {output_path}')
+    logger.debug(f'Збереження згенерованого MIDI файлу: {output_path}')
     midi_generator.generate_midi(output_path, generated_note_infos)
     return output_filename

@@ -11,13 +11,13 @@ from fastapi.responses import FileResponse, StreamingResponse
 from datetime import datetime
 import asyncio
 from utils.logger import setup_logger
-from cloudinary.uploader import destroy 
+import cloudinary.api
+from cloudinary.uploader import destroy
 from cloudinary import Search
+from apscheduler.schedulers.background import BackgroundScheduler
+
 
 logger = setup_logger(__name__)
-
-TEMP_DIR = "./generated_midis"
-Path(TEMP_DIR).mkdir(parents=True, exist_ok=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -28,27 +28,29 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 def clean_old_files():
-    today_date = datetime.today().strftime('%Y%m%d')
+    today_date = datetime.today().date()
+    next_cursor = None
+    batch_size = 1
     logger.info(f"Видалення файлів, які не відповідають сьогоднішній даті {today_date}")
-    for filename in os.listdir(TEMP_DIR):
-        file_path = os.path.join(TEMP_DIR, filename)
-        if not filename.__contains__(today_date):
-            logger.info(f"Файл {filename} не відповідає сьогоднішній даті")
-            if os.path.isfile(file_path):
-                try:
-                    os.remove(file_path)
-                    logger.info(f"Файл {filename} видалено")
-                except Exception as e:
-                    logger.error(f"Помилка при видаленні файлу {filename}: {str(e)}")
+    resources = cloudinary.api.resources_by_asset_folder(
+            asset_folder="midi_files",
+            max_results=batch_size,
+            next_cursor=next_cursor
+        )
+    while True:   
+        public_ids_to_delete = []
+        for resource in resources['resources']:
+            created_at = datetime.strptime(resource['created_at'], '%Y-%m-%dT%H:%M:%SZ').date()
+            if created_at != today_date:
+                public_ids_to_delete.append(resource['public_id'])
 
-def remove_file(file_path: str):
-    """Функція для видалення файлу після завантаження"""
-    try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            logger.info(f"Файл {file_path} видалено")
-    except Exception as e:
-        logger.warning(f"Помилка видалення файлу {file_path}: {e}")
+        if public_ids_to_delete:
+            cloudinary.api.delete_resources(public_ids=public_ids_to_delete, resource_type='raw')
+            logger.info(f"Батч файлів {public_ids_to_delete} успішно видалено")
+
+        next_cursor = resources.get('next_cursor')
+        if not next_cursor:
+            break
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,53 +62,22 @@ app.add_middleware(
 
 apirouter = APIRouter()
 
-# @apirouter.get("/download/{filename}")
-# async def download_midi(filename: str, background_tasks: BackgroundTasks):
-#     logger.info(f"Запит на скачування файлу {filename}")
-#     try:
-#         file_path = os.path.join(TEMP_DIR, filename)
-#         if not os.path.exists(file_path):
-#             logger.warning(f"Файл не знайдено: {filename}")
-#             return {"error": FILE_NOT_FOUND}
-
-#         background_tasks.add_task(remove_file, file_path)
-#         logger.info(f"Файл {filename} успішно відправлено на скачування")
-#         return FileResponse(file_path, media_type="audio/midi", filename=filename)
-#     except Exception as e:
-#         logger.error(f"Помилка при скачуванні файлу {filename}: {str(e)}")
-#         raise
-
-# @apirouter.get("/preview/{filename}")
-# async def preview_midi(filename: str):
-#     logger.info(f"Запит на попередній перегляд файлу {filename}")
-#     try:
-#         file_path = os.path.join(TEMP_DIR, filename)
-#         if not os.path.exists(file_path):
-#             logger.warning(f"Файл не знайдено: {filename}")
-#             return {"error": FILE_NOT_FOUND}
-
-#         logger.info(f"Файл {filename} успішно відправлено на попередній перегляд")
-#         return FileResponse(file_path, media_type="audio/midi", filename=filename)
-#     except Exception as e:
-#         logger.error(f"Помилка при попередньому перегляді файлу {filename}: {str(e)}")
-#         raise
-
 async def delete_from_cloudinary(public_id: str):
     try:
-        destroy(public_id, resource_type="raw")
+        return destroy(public_id, resource_type="raw")
     except Exception as e:
-        print(f"Error deleting file {public_id} from Cloudinary: {e}")
+        logger.debug(f"Помилка при видаленні файлу {public_id} з Cloudinary: {e}")
 
 @apirouter.get("/download/{filename}")
 async def download_midi(filename: str, background_tasks: BackgroundTasks):
     await asyncio.sleep(3)
     response_info = Search().expression(f"public_id:midi_files/generated_midis/{filename}").execute();
-    logger.info(f"Search result: {response_info}")
+    logger.debug(f"Результат пошуку: {response_info}")
     if not response_info['resources']:
-        raise HTTPException(status_code=404, detail="File not found on Cloudinary")
+        raise HTTPException(status_code=404, detail="Файл не знайдено на Cloudinary")
     async with httpx.AsyncClient() as client:
         response = await client.get(response_info['resources'][0]['secure_url'])
-        logger.info(f"Response status code: {response.status_code}")
+        logger.debug(f"Код відповіді: {response.status_code}")
 
         background_tasks.add_task(delete_from_cloudinary, f"midi_files/generated_midis/{filename}")
 
@@ -121,12 +92,12 @@ async def download_midi(filename: str, background_tasks: BackgroundTasks):
 async def preview_midi(filename: str):
     await asyncio.sleep(3)
     response_info = Search().expression(f"public_id:midi_files/generated_midis/{filename}").execute();
-    logger.info(f"Search result: {response_info}")
+    logger.debug(f"Результат пошуку: {response_info}")
     if not response_info['resources']:
-        raise HTTPException(status_code=404, detail="File not found on Cloudinary")
+        raise HTTPException(status_code=404, detail="Файл не знайдено на Cloudinary")
     async with httpx.AsyncClient() as client:
         response = await client.get(response_info['resources'][0]['secure_url'])
-        logger.info(f"Response status code: {response.status_code}")
+        logger.debug(f"Код відповіді: {response.status_code}")
 
         return StreamingResponse(
             response.aiter_bytes(),
@@ -138,3 +109,7 @@ apirouter.include_router(lstm_v2.router, prefix="/v2/lstm", tags=["LSTM_v2"])
 apirouter.include_router(ffn.router, prefix="/ffn", tags=["FFN"])
 
 app.include_router(apirouter, prefix="/api", tags=["API"])
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(clean_old_files, 'cron', hours=0)
+scheduler.start()

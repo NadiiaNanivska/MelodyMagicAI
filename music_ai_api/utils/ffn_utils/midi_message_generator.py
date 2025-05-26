@@ -3,12 +3,12 @@ from utils.ffn_models.note_info import NoteInfo
 from mido import Message
 from ordered_set import OrderedSet
 
-# The default tempo is 120 BPM.
-# (500000 microseconds per beat (quarter note).)
+# Дефолтний темп 120 BPM.
+# (500000 microseconds per beat (четвертна нота).)
 DEFAULT_TEMPO = 500000
 PULSE_PER_QUARTE_NOTE = 480
 
-beat_length_ms = PULSE_PER_QUARTE_NOTE  # NOTE: This is good.
+beat_length_ms = PULSE_PER_QUARTE_NOTE
 
 
 def get_event_positions(note_infos: List[NoteInfo]):
@@ -26,7 +26,7 @@ def get_position_delta_from_previous_notes(position: float, previous_notes: List
     if len(previous_notes) == 0:
         return position
 
-    smallest_distance_from_position = 999999 # Big enough value so that no distance between two notes equal this.
+    smallest_distance_from_position = 999999
     for note in previous_notes:
         note_start = note.starting_beat
         if note_start > position:
@@ -43,13 +43,11 @@ def get_position_delta_from_previous_notes(position: float, previous_notes: List
 
     return smallest_distance_from_position
 
-# Get notes at position in a forward pass of all notes till note start and end after position
 def get_notes_for_position(position: float, note_infos: List[NoteInfo]):
     for note in note_infos:
         note_start = note.starting_beat
         note_end = note.starting_beat + note.length
 
-        # After position, continue in next iteration
         if note_end > position and note_start > position:
             break
 

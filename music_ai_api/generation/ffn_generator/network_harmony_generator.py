@@ -32,7 +32,6 @@ class NetworkHarmonyGenerator:
         x_soprano = x_soprano.to(device)
         y_alto, y_tenor, y_bass = self.network(x_soprano)
 
-        # Only use first batch result and flip dimensions so notes are last dimension and time first dimension for model output
         x_soprano = x_soprano[0]
         y_alto = y_alto[0].transpose(0, 1)
         y_tenor = y_tenor[0].transpose(0, 1)

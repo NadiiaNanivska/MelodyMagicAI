@@ -34,7 +34,7 @@ def load_custom_midi_data(file, test_size=0.2, random_seed=42):
         for i in range(4):
             midi_filename = f"{base_filename}_copy{i+1}.mid"
             midi_path = os.path.join(tmpdirname, midi_filename)
-            logger.info(f"Зберігаємо файл {midi_filename} у {tmpdirname}")
+            logger.debug(f"Зберігаємо файл {midi_filename} у {tmpdirname}")
             file.file.seek(0)
             with open(midi_path, "wb") as out_f:
                 shutil.copyfileobj(file.file, out_f)
@@ -42,13 +42,13 @@ def load_custom_midi_data(file, test_size=0.2, random_seed=42):
         # Після запису файлу file.file потрібно повернутися на початок для подальших читань
         file.file.seek(0)
 
-        logger.info(f"Використовуємо файли: {midi_filenames}")
+        logger.debug(f"Підготовлено {len(midi_filenames)} копій MIDI-файлу для обробки")
 
         midi_data_all = []
 
         for idx, midi_file in enumerate(midi_filenames):
             midi_file_path = os.path.join(tmpdirname, midi_file)
-            logger.info(f"Обробка файлу {idx+1}/4: {midi_file}")
+            logger.debug(f"Обробка файлу {idx+1}/4: {midi_file}")
 
             midi_data = analyze_simultaneous_pitches(midi_file_path)
             midi_data_all.append(midi_data)

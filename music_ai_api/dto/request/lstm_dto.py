@@ -21,11 +21,11 @@ class GenerateRequest(BaseModel):
     @field_validator('num_predictions')
     def validate_num_predictions(cls, v):
         if not 0 < v:
-            raise ValueError('Кількість нот має бути додатня')
+            raise ValueError('Кількість нот має бути додатною')
         return v
     
     @field_validator('tempo')
     def validate_tempo(cls, v):
         if not 0 < v <= 400:
-            raise ValueError('Темп має бути додатня')
+            raise ValueError('Темп має бути додатним і не перевищувати 400')
         return v
