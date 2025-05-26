@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from datetime import datetime
 import asyncio
 from utils.logger import setup_logger
-import cloudinary.api
+from cloudinary.api import delete_resources, resources_by_asset_folder
 from cloudinary.uploader import destroy
 from cloudinary import Search
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -32,7 +32,7 @@ def clean_old_files():
     next_cursor = None
     batch_size = 1
     logger.info(f"Видалення файлів, які не відповідають сьогоднішній даті {today_date}")
-    resources = cloudinary.api.resources_by_asset_folder(
+    resources = resources_by_asset_folder(
             asset_folder="midi_files",
             max_results=batch_size,
             next_cursor=next_cursor
@@ -45,7 +45,7 @@ def clean_old_files():
                 public_ids_to_delete.append(resource['public_id'])
 
         if public_ids_to_delete:
-            cloudinary.api.delete_resources(public_ids=public_ids_to_delete, resource_type='raw')
+            delete_resources(public_ids=public_ids_to_delete, resource_type='raw')
             logger.info(f"Батч файлів {public_ids_to_delete} успішно видалено")
 
         next_cursor = resources.get('next_cursor')
@@ -111,5 +111,6 @@ apirouter.include_router(ffn.router, prefix="/ffn", tags=["FFN"])
 app.include_router(apirouter, prefix="/api", tags=["API"])
 
 scheduler = BackgroundScheduler()
-scheduler.add_job(clean_old_files, 'cron', hours=0)
+scheduler.add_job(clean_old_files, 'cron', hour=0)
+# scheduler.add_job(clean_old_files, 'cron', minute='*')
 scheduler.start()
