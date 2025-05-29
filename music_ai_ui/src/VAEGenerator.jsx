@@ -54,7 +54,7 @@ const VAEGenerator = () => {
                 sequence = await musicVAE.similar(quantizedSequence, 1, 0.5);
             } else {
                 console.log('Генерація випадкової музики...');
-                sequence = await musicVAE.sample(1);
+                sequence = await musicVAE.sample(1, 1.5);
             }
             setGeneratedSequence(sequence[0]);
             success('Варіації згенеровано!');
