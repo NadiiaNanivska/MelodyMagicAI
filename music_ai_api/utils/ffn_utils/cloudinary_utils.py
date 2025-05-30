@@ -40,15 +40,15 @@ def upload_mido_midi(mid: mido.MidiFile, out_file: str) -> str:
     midi_io = io.BytesIO()
     mid.save(file=midi_io)
     midi_io.seek(0)
-    # try:
-    upload_result = upload(
-        midi_io,
-        resource_type="raw",
-        folder="midi_files",
-        public_id=out_file,
-        overwrite=True
-    )
-    return upload_result['secure_url']
+    try:
+        upload_result = upload(
+            midi_io,
+            resource_type="raw",
+            folder="midi_files",
+            public_id=out_file,
+            overwrite=True
+        )
+        return upload_result['secure_url']
 
-    # except Exception as e:
-    #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Помилка під час завантаження MIDI файлу: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Помилка під час завантаження MIDI файлу: {e}")
