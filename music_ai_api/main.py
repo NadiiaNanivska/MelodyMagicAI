@@ -30,14 +30,15 @@ app = FastAPI(lifespan=lifespan)
 def clean_old_files():
     today_date = datetime.today().date()
     next_cursor = None
-    batch_size = 1
+    batch_size = 10
     logger.info(f"Видалення файлів, які не відповідають сьогоднішній даті {today_date}")
-    resources = resources_by_asset_folder(
-            asset_folder="midi_files",
-            max_results=batch_size,
-            next_cursor=next_cursor
+    while True: 
+        resources = resources_by_asset_folder(
+        asset_folder="midi_files",
+        max_results=batch_size,
+        next_cursor=next_cursor
         )
-    while True:   
+        logger.debug(f"Отримано ресурси: {resources}") 
         public_ids_to_delete = []
         for resource in resources['resources']:
             created_at = datetime.strptime(resource['created_at'], '%Y-%m-%dT%H:%M:%SZ').date()
