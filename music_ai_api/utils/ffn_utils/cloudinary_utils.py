@@ -1,4 +1,5 @@
 import io
+import mido
 import pretty_midi
 import cloudinary
 import os 
@@ -16,7 +17,7 @@ cloudinary.config(
     secure=True
 )
 
-def upload_image(pm: pretty_midi.PrettyMIDI, out_file: str) -> str:
+def upload_pm_midi(pm: pretty_midi.PrettyMIDI, out_file: str) -> str:
     midi_io = io.BytesIO()
     pm.write(midi_io)
     midi_io.seek(0)
@@ -33,3 +34,21 @@ def upload_image(pm: pretty_midi.PrettyMIDI, out_file: str) -> str:
 
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Помилка під час завантаження MIDI файлу: {e}")
+    
+
+def upload_mido_midi(mid: mido.MidiFile, out_file: str) -> str:
+    midi_io = io.BytesIO()
+    mid.save(file=midi_io)
+    midi_io.seek(0)
+    # try:
+    upload_result = upload(
+        midi_io,
+        resource_type="raw",
+        folder="midi_files",
+        public_id=out_file,
+        overwrite=True
+    )
+    return upload_result['secure_url']
+
+    # except Exception as e:
+    #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Помилка під час завантаження MIDI файлу: {e}")

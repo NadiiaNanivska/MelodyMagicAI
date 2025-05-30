@@ -60,7 +60,7 @@ def harmonize_melody(file: UploadFile = File(...)):
         
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_filename = f'generated_file_{timestamp}.mid'
-    output_path = os.path.join('generated_midis', output_filename)
+    output_path = 'generated_midis/' + output_filename
         
     logger.debug(f'Збереження згенерованого MIDI файлу: {output_path}')
     midi_generator.generate_midi(output_path, generated_note_infos)

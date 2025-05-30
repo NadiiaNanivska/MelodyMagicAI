@@ -1,7 +1,7 @@
 import pandas as pd
 import pretty_midi
 from common.constants import ROUND_PRECISION, valid_durations
-from utils.ffn_utils.cloudinary_utils import upload_image
+from utils.ffn_utils.cloudinary_utils import upload_pm_midi
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -66,6 +66,6 @@ def notes_to_midi_categorical(
             active_notes.append(new_note)
 
     pm.instruments.append(instrument)
-    url = upload_image(pm=pm, out_file=out_file)
+    url = upload_pm_midi(pm=pm, out_file=out_file)
     logger.info(f"Завантажено MIDI файл на Cloudinary: {url}")
     return url
