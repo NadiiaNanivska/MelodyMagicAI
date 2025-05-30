@@ -1,5 +1,6 @@
 from typing import List
 from mido import Message, MetaMessage, MidiFile, MidiTrack
+from utils.ffn_utils.cloudinary_utils import upload_mido_midi
 from utils.ffn_utils.midi_message_generator import MidiMessageGenerator
 from utils.ffn_models.note_info import NoteInfo
 
@@ -27,6 +28,6 @@ def get_tempo_track(qpm):
     return tempo_track
 
 def generate_midi(name, track_note_infos: List[List[NoteInfo]], qpm: int = 120):
-    name = name.replace('.csv', '')
     midi_file = get_midi_file(track_note_infos, qpm)
+    upload_mido_midi(mid=midi_file, out_file=name)
     midi_file.save(name)
